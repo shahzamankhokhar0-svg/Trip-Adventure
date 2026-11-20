@@ -1,0 +1,1618 @@
+import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
+import { invalidateFastCache } from './fastCache.ts';
+import type {
+  Attraction,
+  BlockedDateEntry,
+  BookingRequest,
+  CmsContent,
+  ContactInquiry,
+  CustomerReview,
+  GalleryItem,
+  SeoPagesMap,
+  SiteSettings,
+  TourPackage,
+} from '../src/types.ts';
+
+export interface AdminRecord {
+  username: string;
+  passwordHash: string;
+  salt: string;
+  updatedAt: string;
+}
+
+export interface DataStore {
+  admin: AdminRecord | null;
+  settings: SiteSettings;
+  cms: CmsContent;
+  tours: TourPackage[];
+  attractions: Attraction[];
+  bookings: BookingRequest[];
+  blockedDates: BlockedDateEntry[];
+  autoBlockConfirmedDates: boolean;
+  reviews: CustomerReview[];
+  gallery: GalleryItem[];
+  inquiries: ContactInquiry[];
+}
+
+const DATA_DIR = path.resolve(process.cwd(), 'data');
+const STORE_PATH = path.join(DATA_DIR, 'store.json');
+
+const IMG = {
+  hero: '/src/assets/images/hero_dubai_skyline_1794985266623.jpg',
+  desert: '/src/assets/images/desert_safari_sunset_luxury_1795199286659.jpg',
+  desertCamp: '/src/assets/images/desert_camp_starlight_dinner_1795199287008.jpg',
+  burj: '/src/assets/images/tour_burj_khalifa_1794985267744.jpg',
+  burjAlArabHd: '/src/assets/images/burj_al_arab_jumeirah_coast_1795199286770.jpg',
+  dubaiFrameHd: '/src/assets/images/dubai_frame_zabeel_panorama_1795199286236.jpg',
+  atlantisPalmHd: '/src/assets/images/atlantis_palm_golden_crescent_1795199286173.jpg',
+  marina: '/src/assets/images/tour_dubai_marina_1794985268367.jpg',
+  palm: '/src/assets/images/tour_palm_jumeirah_1794985268392.jpg',
+  abuDhabi: '/src/assets/images/tour_abu_dhabi_1794985269450.jpg',
+  oldDubai: '/src/assets/images/tour_old_dubai_1794985269475.jpg',
+  museum: '/src/assets/images/tour_museum_future_1794985270626.jpg',
+  guide: '/assets/aistudio/WhatsApp_Image_2026-11-20_at_10.06.42_AM_896c4520.jpeg',
+  organizerShahzaman: '/assets/aistudio/WhatsApp_Image_2026-11-20_at_10.06.42_AM_896c4520.jpeg',
+  usamaKhokharGuide: '/assets/aistudio/WhatsApp_Image_2026-11-20_at_10.25.24_AM_cd873d4c.jpeg',
+  abdulQadirKhokharGuide: '/assets/aistudio/WhatsApp_Image_2026-11-20_at_10.20.26_AM_46584150.jpeg',
+  usamaBurjAlArab: '/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.32_AM_c55829f1.jpeg',
+  usamaGrandMosque: '/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.19_AM_3d5b2311.jpeg',
+  usamaBurjKhalifa: '/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.24_AM__1__274d09b4.jpeg',
+  usamaMarinaNight: '/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.25_AM_217a33ae.jpeg',
+  usamaJumeirah: '/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.18_AM_1b47f683.jpeg',
+  dxbAirportArrival: '/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.08_AM_7effb360.jpeg',
+  museumFutureDrive: '/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.27_AM_c5af3e19.jpeg',
+  alFahidiCourtyard: '/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.11_AM_79b046a0.jpeg',
+  alFahidiFort: '/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.16_AM_eeeca48d.jpeg',
+  alSeefWaterfront: '/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.17_AM_28618dd5.jpeg',
+  dubaiFrameSkyline: '/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.08_AM__1__e7da1ee2.jpeg',
+  dubaiCreekDhow: '/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.08_AM__2__40a97e0d.jpeg',
+  tourFrameGuests: '/assets/aistudio/WhatsApp_Image_2026-11-20_at_8.53.30_AM_2f1cf85e.jpeg',
+  tourBurjGuests: '/assets/aistudio/WhatsApp_Image_2026-11-20_at_8.53.31_AM_7f135b49.jpeg',
+  tourPalmViewGuests: '/assets/aistudio/WhatsApp_Image_2026-11-20_at_8.53.28_AM_e6ebe00d.jpeg',
+  tourPalmNightSkyline: '/assets/aistudio/WhatsApp_Image_2026-11-20_at_8.53.29_AM_8227e46b.jpeg',
+};
+
+const REAL_TOUR_HD_PHOTOS = [
+  IMG.burjAlArabHd,
+  IMG.dubaiFrameHd,
+  IMG.atlantisPalmHd,
+  IMG.desert,
+  IMG.desertCamp,
+  IMG.usamaBurjAlArab,
+  IMG.usamaGrandMosque,
+  IMG.usamaBurjKhalifa,
+  IMG.usamaMarinaNight,
+  IMG.usamaJumeirah,
+  IMG.museumFutureDrive,
+  IMG.tourBurjGuests,
+];
+
+export const BUILT_IN_IMAGES = Object.entries(IMG).map(([key, url]) => ({
+  id: `builtin-${key}`,
+  filename: path.basename(url),
+  url,
+  source: 'built-in' as const,
+}));
+
+export function createDefaultSeoPages(): SeoPagesMap {
+  return {
+    home: {
+      title: 'TRIP ADVENTURE – Dubai Personal Tour Guide & Transfers',
+      description:
+        'Explore Dubai attractions, desert safaris, half-day & full-day private tours, and DXB airport transfers in AED with TRIP ADVENTURE.',
+    },
+    about: {
+      title: 'About TRIP ADVENTURE – Shahzaman, Usama & Abdul Qadir',
+      description:
+        'Meet Program Organizer Shahzaman Khokhar and Dubai tour guides Usama & Abdul Qadir guiding private city tours and desert safaris.',
+    },
+    tours: {
+      title: 'Dubai Tours, Desert Safaris & Transfers | TRIP ADVENTURE',
+      description:
+        'Browse half-day & full-day Dubai city tours, desert safaris from 120 AED, and DXB airport or inter-hotel transfers in UAE Dirhams.',
+    },
+    attractions: {
+      title: 'Dubai Attractions & Landmark Map | TRIP ADVENTURE',
+      description:
+        'Discover Burj Khalifa, Palm Jumeirah, Museum of the Future, and Old Dubai Creek on our interactive sightseeing landmark map.',
+    },
+    gallery: {
+      title: 'Dubai Photography Gallery | TRIP ADVENTURE',
+      description:
+        'View real moments from Downtown Dubai, Arabian desert dunes, Palm Jumeirah, Dubai Marina, and Sheikh Zayed Grand Mosque tours.',
+    },
+    reviews: {
+      title: 'Verified Guest Reviews | TRIP ADVENTURE Dubai',
+      description:
+        'Read verified reviews from guests who explored Dubai, desert safaris, and Abu Dhabi on private guided tours with TRIP ADVENTURE.',
+    },
+    contact: {
+      title: 'Contact & WhatsApp Desk | TRIP ADVENTURE Dubai',
+      description:
+        'Message Shahzaman Khokhar and our Dubai guides via WhatsApp, email, or our inquiry form to plan airport pickups and private tours.',
+    },
+    book: {
+      title: 'Book Dubai Tours & Transfers Online | TRIP ADVENTURE',
+      description:
+        'Request Dubai city tours, private 4x4 desert safaris, or DXB airport transfers online and track your reservation status anytime.',
+    },
+  };
+}
+
+export function createDefaultCmsContent(): CmsContent {
+  return {
+    heroEyebrow: 'DUBAI, UNITED ARAB EMIRATES · PERSONAL TOUR GUIDE',
+    heroHeading: 'DISCOVER DUBAI WITH TRIP ADVENTURE',
+    heroDescription:
+      "Explore Dubai's iconic attractions, hidden gems, luxury experiences, and unforgettable adventures with your personal tour guide.",
+    heroBannerUrl: IMG.hero,
+    heroExploreBtnText: 'Explore Our Tours',
+    heroBookBtnText: 'Book Your Adventure',
+    heroWhatsAppBtnText: 'Contact on WhatsApp',
+    welcomeEyebrow: 'Welcome to TRIP ADVENTURE',
+    welcomeHeading: 'Your Journey, Our Adventure – Discover Dubai with TRIP ADVENTURE.',
+    welcomeDescription:
+      'Welcome to TRIP ADVENTURE in Dubai. Led by Program Organizer Shahzaman Khokhar and guided by our experienced tour guides Usama and Abdul Qadir, we deliver tailored half-day and full-day city sightseeing, Arabian desert safaris, and seamless Dubai airport and inter-hotel transfers in UAE Dirhams (AED).',
+    featuredEyebrow: 'Curated Private Experiences',
+    featuredHeading: 'Featured Dubai Tour Packages',
+    featuredDescription:
+      'Flexible Half-Day and Full-Day city sightseeing, desert safaris, and private excursions tailored to your schedule.',
+    tariffEyebrow: 'Fixed Tariff Schedule',
+    tariffHeading: 'Desert Safari, Dubai Airport & Inter-Hotel Transfers',
+    destinationsEyebrow: 'Iconic Landmarks',
+    destinationsHeading: 'Popular Dubai Destinations',
+    whyEyebrow: 'Personal Service Standard',
+    whyHeading: 'Why Choose TRIP ADVENTURE?',
+    whyCards: [
+      {
+        num: '01.',
+        title: 'Dedicated Program & Guides Team',
+        description:
+          'Coordinated by Program Organizer Shahzaman Khokhar and led by Tour Guides Usama & Abdul Qadir at your own pace.',
+      },
+      {
+        num: '02.',
+        title: 'Direct WhatsApp Coordination',
+        description:
+          'Communicate directly before arrival and during your stay for pickup timing, dining tips, and route adjustments.',
+      },
+      {
+        num: '03.',
+        title: 'Transparent AED Quoting',
+        description:
+          'Receive clear tour quotes in UAE Dirhams tailored to your party size and chosen attraction stops.',
+      },
+      {
+        num: '04.',
+        title: 'Modern & Heritage Balance',
+        description:
+          'Combine Downtown icons like Burj Khalifa with authentic abra rides across Dubai Creek and local souks.',
+      },
+    ],
+    reviewsEyebrow: 'Verified Feedback',
+    reviewsHeading: 'Guest Reviews',
+    galleryEyebrow: 'Around the Emirates',
+    galleryHeading: 'Photo Gallery',
+    faqEyebrow: 'Travel Planning',
+    faqHeading: 'Frequently Asked Questions',
+    faqSubtitle:
+      'Browse answers grouped by Tours, Transfers, and Booking to plan your Dubai itinerary clearly.',
+    faqs: [
+      {
+        id: 'tours-safari-rates',
+        category: 'Tours',
+        question: 'What are the Desert Safari rates for per-person and private 4x4 bookings?',
+        answer:
+          'Our sharing-basis Desert Safari is 120 AED per person, and our Private 4x4 Desert Safari for 5 to 6 guests is 800 AED total. Both include dune drives, sunset viewpoints, and Arabian desert camp hospitality.',
+      },
+      {
+        id: 'tours-half-full-day',
+        category: 'Tours',
+        question: 'Do city and private sightseeing tours offer Half-Day and Full-Day AED rates?',
+        answer:
+          'Yes. Clear Half-Day (4 Hours) and Full-Day (8 Hours) rates are available in AED — including Dubai City Tour (350 AED Half-Day / 600 AED Full-Day), Old Dubai Heritage Tour (200 AED Half-Day / 420 AED Full-Day), Private Dubai Sightseeing (400 AED Half-Day / 700 AED Full-Day), and Abu Dhabi City Tour (750 AED Full-Day).',
+      },
+      {
+        id: 'tours-team-guides',
+        category: 'Tours',
+        question: 'Who organizes the programs and leads the guided tours?',
+        answer:
+          'All itineraries, schedules, and transfers are organized by Program Organizer Shahzaman Khokhar, while sightseeing tours and cultural walks are led in English by Tour Guides Usama and Abdul Qadir.',
+      },
+      {
+        id: 'transfers-airport-rates',
+        category: 'Transfers',
+        question: 'What are the Dubai Airport (DXB) arrival and departure transfer rates?',
+        answer:
+          'Dubai Airport (DXB) arrival transfers to Old Dubai (Deira & Bur Dubai) are 120 AED, and departures from Old Dubai back to DXB are 100 AED. Both arrivals and departures for New Dubai (Dubai Marina, Palm Jumeirah, and Downtown) are 170 AED per way.',
+      },
+      {
+        id: 'transfers-inter-hotel',
+        category: 'Transfers',
+        question: 'What do inter-hotel transfers cost between Old Dubai and New Dubai?',
+        answer:
+          'Inter-hotel transfers between properties within Old Dubai (Deira & Bur Dubai) are 80 AED. Inter-hotel transfers from Old Dubai to New Dubai (Marina, Palm Jumeirah, or Downtown) are 150 AED.',
+      },
+      {
+        id: 'transfers-pickup-locations',
+        category: 'Transfers',
+        question: 'Where can you pick up and drop off guests?',
+        answer:
+          'Pickup and drop-off are available directly from any hotel or private residence in Old Dubai and New Dubai, Dubai International Airport (DXB Terminals 1, 2 & 3), as well as Port Rashid and Dubai Harbour cruise terminals.',
+      },
+      {
+        id: 'booking-workflow',
+        category: 'Booking',
+        question: 'How does online booking and guide confirmation work?',
+        answer:
+          'Submitting the online booking form generates a unique reference code (TA-DXB-XXXXXX) with pending status. Your request is not finalized until Program Organizer Shahzaman Khokhar verifies availability and confirms it. You can track your request status anytime on the Book page.',
+      },
+      {
+        id: 'booking-whatsapp',
+        category: 'Booking',
+        question: 'How quickly can I coordinate pickup times or special requests on WhatsApp?',
+        answer:
+          'You can message our WhatsApp business desk directly from any tour or transfer card, the booking confirmation page, or the floating WhatsApp button. Selected tour names, travel dates, guest counts, and pickup notes are pre-filled automatically.',
+      },
+      {
+        id: 'booking-tickets',
+        category: 'Booking',
+        question: 'Are attraction observation deck tickets included in sightseeing rates?',
+        answer:
+          'Unless specified on the package, third-party tickets such as Burj Khalifa observation decks or museum passes are excluded from the guide/vehicle rate and quoted separately based on your preferred entry time.',
+      },
+    ],
+    ctaEyebrow: 'TRIP ADVENTURE · DUBAI, UAE',
+    ctaHeading: 'Ready to Plan Your Personal Dubai Experience?',
+    ctaDescription: 'Your Journey, Our Adventure – Discover Dubai with TRIP ADVENTURE.',
+    ctaBannerUrl: '',
+    ctaPrimaryBtnText: 'Request Online Booking',
+    ctaSecondaryBtnText: 'Chat on WhatsApp',
+    toursPageEyebrow: 'Half-Day, Full-Day, Safari & Transfer Services',
+    toursPageHeading: 'Dubai Tours, Safaris & Transfers',
+    toursPageDescription:
+      'Explore tours, desert safaris, and airport/hotel transfer packages organized by Shahzaman Khokhar with Tour Guides Usama & Abdul Qadir.',
+    aboutServicesHeading: 'Personalized Guiding & Transfer Services',
+    aboutServicesDescription:
+      'Every itinerary is tailored around your travel dates, family pace, hotel location, and preferred Dubai neighborhoods.',
+    aboutCommitmentEyebrow: 'Our Commitment',
+    aboutCommitmentHeading: 'Clear AED Rates & Reliable Coordination',
+    aboutCommitmentDescription:
+      'From seamless DXB airport arrivals and inter-hotel transfers between Deira, Bur Dubai, and New Dubai to half-day, full-day tours, and desert safaris, TRIP ADVENTURE ensures visitors travel comfortably with transparent UAE Dirham pricing.',
+    contactEyebrow: 'Direct Assistance',
+    contactHeading: 'Contact TRIP ADVENTURE',
+    contactDescription:
+      'Reach out directly to Program Organizer Shahzaman Khokhar (Tour Guides: Usama & Abdul Qadir) for Dubai sightseeing tours, desert safaris, airport arrivals/departures, or inter-hotel transfers.',
+    footerTagline: 'Personal Tour Guide Services in Dubai, UAE.',
+    seoPages: createDefaultSeoPages(),
+  };
+}
+
+export function createInitialStore(): DataStore {
+  const defaultSettings: SiteSettings = {
+    brandName: 'TRIP ADVENTURE',
+    slogan: 'Your Journey, Our Adventure – Discover Dubai with TRIP ADVENTURE.',
+    whatsappNumber: '+971542218616',
+    email: 'tripadventure63@gmail.com',
+    address: 'Downtown Dubai, Dubai, United Arab Emirates',
+    businessLat: 25.1972,
+    businessLng: 55.2744,
+    socialInstagram: 'https://instagram.com',
+    socialFacebook: 'https://facebook.com',
+    socialTiktok: 'https://tiktok.com',
+    socialYoutube: 'https://youtube.com',
+    guideName: 'Shahzaman Khokhar',
+    guideTitle: 'Program Organizer',
+    guidesNames: 'Usama Khokhar & Abdul Qadir Khokhar',
+    guideLanguages: 'English',
+    guidePhotoUrl: IMG.organizerShahzaman,
+    guideBio:
+      'Welcome to TRIP ADVENTURE in Dubai. Led by Program Organizer Shahzaman Khokhar and guided by our experienced tour guides Usama Khokhar and Abdul Qadir Khokhar, we deliver tailored half-day and full-day city sightseeing, Arabian desert safaris, and seamless Dubai airport and inter-hotel transfers in UAE Dirhams (AED).',
+    guideExperience: '',
+    guideCredentials: '',
+    guideServices: [
+      'Private half-day and full-day Dubai & Abu Dhabi guided city tours (Led by Guides Usama Khokhar & Abdul Qadir Khokhar)',
+      'Per-person (120 AED) & private 4x4 (800 AED for 5–6 people) Arabian Desert Safaris',
+      'Dubai Airport (DXB) arrivals & departures for Old Dubai (Deira/Bur Dubai) and New Dubai (Marina, Palm Jumeirah, Downtown)',
+      'Inter-hotel transfers across Deira, Bur Dubai, and New Dubai with transparent fixed AED rates',
+      'Program coordination & direct WhatsApp support by Shahzaman Khokhar',
+    ],
+  };
+
+  const defaultTours: TourPackage[] = [
+    {
+      id: 'tour-dubai-city',
+      slug: 'dubai-city-tour',
+      title: 'Dubai City Tour',
+      category: 'Dubai City Tour',
+      imageUrl: IMG.hero,
+      galleryImages: [...REAL_TOUR_HD_PHOTOS],
+      description:
+        'A balanced introduction to modern and historic Dubai, connecting Downtown landmarks, coastal viewpoints, and traditional creek neighborhoods with flexible Half-Day or Full-Day scheduling.',
+      duration: 'Half-Day (4 Hours) / Full-Day (8 Hours)',
+      startingPriceAed: 350,
+      priceNote: 'Half-Day: 350 AED · Full-Day: 600 AED',
+      availabilityNote: 'Confirmed after schedule check with Shahzaman Khokhar',
+      itinerary: [
+        'Hotel or residence pickup in Dubai',
+        'Al Fahidi Historical District & Dubai Creek scenic stop',
+        'Jumeirah Mosque exterior & Jumeirah Beachfront viewpoint (Burj Al Arab photo stop)',
+        'Palm Jumeirah crescent drive & Dubai Marina promenade',
+        'Downtown Dubai & Burj Khalifa / Dubai Mall drop-off or return to hotel',
+      ],
+      pickupInfo: 'Complimentary pickup & drop-off from your Dubai hotel, residence, or cruise port.',
+      included: [
+        'English-speaking Tour Guide (Usama or Abdul Qadir)',
+        'Program coordination by Shahzaman Khokhar',
+        'Flexible Half-Day (4h) or Full-Day (8h) pacing & landmark photo stops',
+        'Bottled mineral water during the tour',
+      ],
+      excluded: [
+        'Attraction observation deck entry tickets unless added to quote',
+        'Meals, personal shopping, and gratuities',
+      ],
+      bookingOptions: [
+        'Half-Day Tour (4 Hours) – 350 AED',
+        'Full-Day Tour (8 Hours) – 600 AED',
+        'WhatsApp Custom Quote',
+      ],
+      featured: true,
+      sortOrder: 1,
+    },
+    {
+      id: 'tour-desert-safari',
+      slug: 'desert-safari-adventure',
+      title: 'Desert Safari Adventure (Per Person)',
+      category: 'Desert Safari Adventure',
+      imageUrl: IMG.desert,
+      galleryImages: [IMG.desert, IMG.desertCamp],
+      description:
+        'Experience the golden Arabian dunes outside Dubai on a per-person basis with dune bashing, sunset photo stops, camel encounters, and Arabian desert camp dining.',
+      duration: '5 – 6 Hours (Afternoon to Evening)',
+      startingPriceAed: 120,
+      priceNote: '120 AED per person · Private 4x4 (5–6 pax): 800 AED',
+      availabilityNote: 'Confirmed after schedule check with Shahzaman Khokhar',
+      itinerary: [
+        'Afternoon pickup from your Dubai hotel or residence',
+        'Arrival at the desert dunes for thrilling dune drive & sunset viewpoints',
+        'Sandboarding & short camel ride experience',
+        'Desert camp dinner & live cultural entertainment',
+        'Evening return drop-off at your accommodation',
+      ],
+      pickupInfo: 'Pickup from Dubai hotels and apartments in Deira, Bur Dubai, and central Dubai.',
+      included: [
+        'Per-person desert safari pass (120 AED per guest)',
+        'Sunset desert photo stops & camp refreshments',
+        'BBQ dinner & evening entertainment at camp',
+        'Coordination by Program Organizer Shahzaman Khokhar',
+      ],
+      excluded: [
+        'Quad biking / dune buggy rentals unless requested',
+        'Private VIP table upgrades unless specified',
+      ],
+      bookingOptions: [
+        'Per Person Safari – 120 AED / person',
+        'Private 4x4 Vehicle (5–6 People) – 800 AED',
+      ],
+      featured: true,
+      sortOrder: 2,
+    },
+    {
+      id: 'tour-private-desert-safari',
+      slug: 'private-4x4-desert-safari',
+      title: 'Private 4x4 Desert Safari (5–6 People)',
+      category: 'Desert Safari Adventure',
+      imageUrl: IMG.desertCamp,
+      galleryImages: [IMG.desertCamp, IMG.desert],
+      description:
+        'Exclusive private-basis Desert Safari in a dedicated 4x4 vehicle for families or groups of 5 to 6 people, featuring private dune bashing, sunset viewpoints, and desert camp hospitality.',
+      duration: '5 – 6 Hours (Afternoon to Evening)',
+      startingPriceAed: 800,
+      priceNote: '800 AED total (Private 4x4 for 5 to 6 people)',
+      availabilityNote: 'Confirmed after schedule check with Shahzaman Khokhar',
+      itinerary: [
+        'Private 4x4 pickup directly from your Dubai hotel or residence',
+        'Exclusive red-dune 4x4 drive tailored to your family comfort level',
+        'Sunset photography stop & sandboarding on open dunes',
+        'Desert camp dinner, refreshments & cultural shows',
+        'Private 4x4 return transfer to your hotel',
+      ],
+      pickupInfo: 'Private door-to-door 4x4 pickup anywhere in Dubai for 5 to 6 guests.',
+      included: [
+        'Exclusive private 4x4 vehicle (800 AED flat rate for 5–6 people)',
+        'Private dune bashing & sunset photography stops',
+        'Camp refreshments & dinner',
+        'Coordinated by Shahzaman Khokhar',
+      ],
+      excluded: [
+        'Quad biking / dune buggy rentals unless requested',
+        'VIP seating upgrades unless specified',
+      ],
+      bookingOptions: [
+        'Private 4x4 Vehicle (5–6 Guests) – 800 AED',
+      ],
+      featured: true,
+      sortOrder: 3,
+    },
+    {
+      id: 'tour-abu-dhabi',
+      slug: 'abu-dhabi-city-tour',
+      title: 'Abu Dhabi City Tour',
+      category: 'Abu Dhabi City Tour',
+      imageUrl: IMG.abuDhabi,
+      galleryImages: [IMG.usamaGrandMosque],
+      description:
+        'A full-day private excursion from Dubai to the UAE capital, featuring Sheikh Zayed Grand Mosque, the Corniche waterfront, and cultural landmarks on Saadiyat and Yas Islands.',
+      duration: 'Full-Day (8 – 9 Hours)',
+      startingPriceAed: 750,
+      priceNote: 'Full-Day Private Tour: 750 AED',
+      availabilityNote: 'Confirmed after schedule check with Shahzaman Khokhar',
+      itinerary: [
+        'Morning departure from Dubai via Sheikh Zayed Road',
+        'Guided visit planning at Sheikh Zayed Grand Mosque (dress code assistance included)',
+        'Abu Dhabi Corniche & Emirates Palace photo stop',
+        'Qasr Al Watan or Louvre Abu Dhabi optional visit',
+        'Afternoon return to Dubai',
+      ],
+      pickupInfo: 'Door-to-door pickup and return from any hotel or residence in Dubai.',
+      included: [
+        'English-speaking Tour Guide (Usama or Abdul Qadir)',
+        'Full-day program organized by Shahzaman Khokhar',
+        'Mosque visitor etiquette & timing coordination',
+      ],
+      excluded: [
+        'Paid museum/palace entrance tickets unless requested in package',
+        'Lunch & personal expenses',
+      ],
+      bookingOptions: ['Full-Day Private Trip – 750 AED', 'Custom Cultural Stopovers'],
+      featured: true,
+      sortOrder: 4,
+    },
+    {
+      id: 'tour-burj-khalifa',
+      slug: 'burj-khalifa-experience',
+      title: 'Burj Khalifa Experience',
+      category: 'Burj Khalifa Experience',
+      imageUrl: IMG.burj,
+      galleryImages: [IMG.usamaBurjKhalifa, IMG.tourBurjGuests, IMG.tourFrameGuests],
+      description:
+        'Discover Downtown Dubai around the world’s tallest tower, timed for golden hour or evening fountain shows with seamless navigation through Dubai Mall and promenade viewpoints.',
+      duration: 'Half-Day (4 Hours) / Full-Day Combo (8 Hours)',
+      startingPriceAed: 250,
+      priceNote: 'Half-Day: 250 AED · Full-Day Downtown Combo: 450 AED',
+      availabilityNote: 'Confirmed after schedule check with Shahzaman Khokhar',
+      itinerary: [
+        'Downtown Dubai arrival & Burj Park architectural orientation',
+        'Dubai Mall indoor highlights & Aquarium viewing gallery',
+        'Burj Khalifa observation deck entry coordination (if tickets selected)',
+        'Evening Dubai Fountain waterfront viewing',
+      ],
+      pickupInfo: 'Hotel pickup in Dubai or direct meeting at Downtown Dubai.',
+      included: [
+        'Guided sightseeing by Usama or Abdul Qadir',
+        'Prime Dubai Fountain viewing guidance & slot advice',
+      ],
+      excluded: [
+        'At The Top / Sky observation deck tickets (quoted separately at real-time rates)',
+        'Dining & shopping',
+      ],
+      bookingOptions: [
+        'Half-Day Experience (4 Hours) – 250 AED',
+        'Full-Day Downtown Combo (8 Hours) – 450 AED',
+      ],
+      featured: false,
+      sortOrder: 5,
+    },
+    {
+      id: 'tour-dubai-marina',
+      slug: 'dubai-marina-tour',
+      title: 'Dubai Marina Tour',
+      category: 'Dubai Marina Tour',
+      imageUrl: IMG.marina,
+      galleryImages: [IMG.usamaMarinaNight, IMG.tourPalmViewGuests],
+      description:
+        'Stroll the illuminated canal promenade of Dubai Marina, JBR waterfront, and Bluewaters Island with optional private yacht or dhow cruise coordination at sunset.',
+      duration: 'Half-Day (4 Hours) / Full-Day Coastal (8 Hours)',
+      startingPriceAed: 250,
+      priceNote: 'Half-Day: 250 AED · Full-Day Marina & Coast: 450 AED',
+      availabilityNote: 'Confirmed after schedule check with Shahzaman Khokhar',
+      itinerary: [
+        'Dubai Marina Walk architectural stroll',
+        'Jumeirah Beach Residence (JBR) & coastal promenade',
+        'Bluewaters Island pedestrian bridge & Ain Dubai views',
+        'Optional marina boat or yacht departure assistance',
+      ],
+      pickupInfo: 'Pickup from Dubai hotels or direct meeting at Dubai Marina.',
+      included: [
+        'Personal guide (Usama or Abdul Qadir) & photo spot curation',
+        'Waterfront dining & cruise coordination',
+      ],
+      excluded: [
+        'Yacht charter or dhow cruise tickets unless included in custom quote',
+        'Food and beverages',
+      ],
+      bookingOptions: [
+        'Half-Day Promenade Tour (4 Hours) – 250 AED',
+        'Full-Day Coastal + Marina (8 Hours) – 450 AED',
+      ],
+      featured: false,
+      sortOrder: 6,
+    },
+    {
+      id: 'tour-palm-jumeirah',
+      slug: 'palm-jumeirah-experience',
+      title: 'Palm Jumeirah Experience',
+      category: 'Palm Jumeirah Experience',
+      imageUrl: IMG.atlantisPalmHd,
+      galleryImages: [IMG.atlantisPalmHd, IMG.burjAlArabHd, IMG.tourPalmViewGuests, IMG.tourPalmNightSkyline],
+      description:
+        'Explore Dubai’s iconic palm-shaped island across The Pointe boardwalk, Palm Monorail views, and Atlantis The Palm coastal vistas.',
+      duration: 'Half-Day (4 Hours) / Full-Day West Coast (8 Hours)',
+      startingPriceAed: 300,
+      priceNote: 'Half-Day: 300 AED · Full-Day West Coast: 520 AED',
+      availabilityNote: 'Confirmed after schedule check with Shahzaman Khokhar',
+      itinerary: [
+        'Palm Jumeirah trunk drive & West Beach boardwalk',
+        'The View at The Palm observation coordination (optional)',
+        'Crescent road scenic stop overlooking Atlantis The Palm',
+        'Souk Madinat Jumeirah canal & Burj Al Arab view',
+      ],
+      pickupInfo: 'Complimentary hotel pickup in Dubai.',
+      included: [
+        'Guided coastal tour with Usama or Abdul Qadir',
+        'Iconic coastal photography stops',
+      ],
+      excluded: [
+        'Observation deck or aquarium tickets unless added',
+        'Meals and personal purchases',
+      ],
+      bookingOptions: [
+        'Half-Day Palm Loop (4 Hours) – 300 AED',
+        'Full-Day Palm & Marina (8 Hours) – 520 AED',
+      ],
+      featured: false,
+      sortOrder: 7,
+    },
+    {
+      id: 'tour-old-dubai',
+      slug: 'old-dubai-heritage-tour',
+      title: 'Old Dubai Heritage Tour',
+      category: 'Old Dubai Heritage Tour',
+      imageUrl: IMG.oldDubai,
+      galleryImages: [
+        IMG.alFahidiCourtyard,
+        IMG.alFahidiFort,
+        IMG.alSeefWaterfront,
+        IMG.dubaiCreekDhow,
+      ],
+      description:
+        'Step back into Dubai’s trading roots through Al Fahidi wind-tower courtyards, a traditional wooden abra crossing on Dubai Creek, and the Gold & Spice Souks.',
+      duration: 'Half-Day (4 Hours) / Full-Day Heritage + Modern (8 Hours)',
+      startingPriceAed: 200,
+      priceNote: 'Half-Day: 200 AED · Full-Day Combo: 420 AED',
+      availabilityNote: 'Confirmed after schedule check with Shahzaman Khokhar',
+      itinerary: [
+        'Al Fahidi Historical Neighbourhood courtyards & architecture walk',
+        'Al Seef creekside promenade',
+        'Traditional wooden Abra ride across Dubai Creek',
+        'Guided walk through Spice Souk and Gold Souk in Deira',
+      ],
+      pickupInfo: 'Hotel pickup in Dubai or meeting point at Al Fahidi.',
+      included: [
+        'Tour Guide (Usama or Abdul Qadir)',
+        'Traditional Abra creek crossing fare',
+        'Souk navigation & cultural insights',
+      ],
+      excluded: [
+        'Museum admissions if requested',
+        'Souvenir purchases & refreshments',
+      ],
+      bookingOptions: [
+        'Half-Day Heritage Tour (4 Hours) – 200 AED',
+        'Full-Day Old & New Dubai (8 Hours) – 420 AED',
+      ],
+      featured: true,
+      sortOrder: 8,
+    },
+    {
+      id: 'tour-shopping',
+      slug: 'dubai-shopping-tour',
+      title: 'Dubai Shopping Tour',
+      category: 'Dubai Shopping Tour',
+      imageUrl: IMG.museum,
+      description:
+        'Tailored shopping accompaniment covering luxury flagship boutiques at The Dubai Mall, Mall of the Emirates, Souk Madinat, and traditional Gold & Textile markets.',
+      duration: 'Half-Day (4 Hours) / Full-Day (8 Hours)',
+      startingPriceAed: 300,
+      priceNote: 'Half-Day: 300 AED · Full-Day: 550 AED',
+      availabilityNote: 'Confirmed after schedule check with Shahzaman Khokhar',
+      itinerary: [
+        'Personalized briefing based on your shopping wishlist',
+        'Visits to selected malls, artisan souks, or outlet districts',
+        'Local guidance on VAT tourist refund & authentic crafts',
+        'Return transfer to your hotel with purchases',
+      ],
+      pickupInfo: 'Private hotel pickup and return in Dubai.',
+      included: [
+        'Personal shopping guide (Usama or Abdul Qadir)',
+        'Custom route across modern malls & traditional souks',
+      ],
+      excluded: ['Personal shopping purchases & meals'],
+      bookingOptions: [
+        'Half-Day Shopping (4 Hours) – 300 AED',
+        'Full-Day Malls & Souks (8 Hours) – 550 AED',
+      ],
+      featured: false,
+      sortOrder: 9,
+    },
+    {
+      id: 'tour-private-sightseeing',
+      slug: 'private-dubai-sightseeing',
+      title: 'Private Dubai Sightseeing',
+      category: 'Private Dubai Sightseeing',
+      imageUrl: IMG.burj,
+      galleryImages: [...REAL_TOUR_HD_PHOTOS],
+      description:
+        'Exclusive sightseeing exclusively for your family, couple, or small group — combining architectural highlights, hidden neighborhoods, and scenic breaks without rushing.',
+      duration: 'Half-Day (4 Hours) / Full-Day (8 Hours)',
+      startingPriceAed: 400,
+      priceNote: 'Half-Day: 400 AED · Full-Day: 700 AED',
+      availabilityNote: 'Confirmed after schedule check with Shahzaman Khokhar',
+      itinerary: [
+        'Private morning pickup at your preferred hour',
+        'Old Dubai Creek & Al Seef heritage walk',
+        'Museum of the Future & Dubai Frame photo perspectives',
+        'Jumeirah coast, Palm Jumeirah, and Dubai Marina',
+        'Downtown Dubai evening arrival',
+      ],
+      pickupInfo: 'Private hotel, airport, or residence pickup anywhere in Dubai.',
+      included: [
+        'Dedicated private tour guide (Usama or Abdul Qadir)',
+        'Program organized by Shahzaman Khokhar',
+        'Flexible timing for families, seniors, or photographers',
+      ],
+      excluded: ['Optional paid attraction tickets & dining'],
+      bookingOptions: [
+        'Half-Day Private (4 Hours) – 400 AED',
+        'Full-Day Private (8 Hours) – 700 AED',
+      ],
+      featured: false,
+      sortOrder: 10,
+    },
+    {
+      id: 'tour-custom-private',
+      slug: 'customized-private-tours',
+      title: 'Customized Private Tours',
+      category: 'Customized Private Tours',
+      imageUrl: IMG.hero,
+      description:
+        'Build your exact Dubai or UAE itinerary from scratch — ideal for transit layovers, multi-day family visits, photography trips, or bespoke milestone celebrations.',
+      duration: 'Half-Day (4 Hours) / Full-Day (8 Hours)',
+      startingPriceAed: 350,
+      priceNote: 'Half-Day: 350 AED · Full-Day: 650 AED',
+      availabilityNote: 'Confirmed after schedule check with Shahzaman Khokhar',
+      itinerary: [
+        'Pre-tour WhatsApp or email consultation with Shahzaman Khokhar',
+        'Tailored attraction sequence matched to your dates & flight timing',
+        'Guided tour led by Usama or Abdul Qadir with flexible pickup',
+      ],
+      pickupInfo: 'Anywhere in Dubai including DXB Airport, Port Rashid, and Dubai Harbour.',
+      included: [
+        'Bespoke itinerary planning by Program Organizer Shahzaman Khokhar',
+        'Dedicated personal guide (Usama or Abdul Qadir)',
+      ],
+      excluded: ['Third-party tickets, dining, or specialty rentals unless quoted'],
+      bookingOptions: [
+        'Half-Day Custom Tour (4 Hours) – 350 AED',
+        'Full-Day Custom Tour (8 Hours) – 650 AED',
+      ],
+      featured: false,
+      sortOrder: 11,
+    },
+    {
+      id: 'transfer-airport-arrival-old-dubai',
+      slug: 'dubai-airport-arrival-old-dubai',
+      title: 'Dubai Airport Arrival – Old Dubai (Deira & Bur Dubai)',
+      category: 'Airport Transfers',
+      imageUrl: IMG.oldDubai,
+      galleryImages: [IMG.dxbAirportArrival],
+      description:
+        'Private Dubai International Airport (DXB) arrival transfer directly to any hotel or residence in Old Dubai, including Deira Dubai and Bur Dubai.',
+      duration: 'Point-to-Point Arrival Transfer',
+      startingPriceAed: 120,
+      priceNote: '120 AED · DXB Arrival to Deira / Bur Dubai',
+      availabilityNote: 'Confirmed after flight schedule check with Shahzaman Khokhar',
+      itinerary: [
+        'Flight arrival monitoring & pickup coordination at DXB Terminal',
+        'Meet & assist with luggage loading',
+        'Direct comfortable drop-off at your Deira or Bur Dubai hotel',
+      ],
+      pickupInfo: 'Dubai International Airport (DXB Terminals 1, 2 & 3) to Deira & Bur Dubai.',
+      included: [
+        'Private air-conditioned transfer (120 AED flat rate)',
+        'Flight tracking & coordination by Shahzaman Khokhar',
+        'Door-to-door drop-off at Deira or Bur Dubai accommodation',
+      ],
+      excluded: ['Extra sightseeing stops unless booked separately'],
+      bookingOptions: ['DXB Arrival to Old Dubai (Deira / Bur Dubai) – 120 AED'],
+      featured: false,
+      sortOrder: 12,
+    },
+    {
+      id: 'transfer-airport-new-dubai',
+      slug: 'dubai-airport-transfer-new-dubai',
+      title: 'Dubai Airport Arrival & Departure – New Dubai',
+      category: 'Airport Transfers',
+      imageUrl: IMG.marina,
+      galleryImages: [IMG.dxbAirportArrival],
+      description:
+        'Private Dubai Airport (DXB) arrival or departure transfers serving New Dubai districts including Dubai Marina, Palm Jumeirah, and Downtown Dubai.',
+      duration: 'Point-to-Point Airport Transfer',
+      startingPriceAed: 170,
+      priceNote: '170 AED per way · Marina, Palm Jumeirah & Downtown',
+      availabilityNote: 'Confirmed after flight schedule check with Shahzaman Khokhar',
+      itinerary: [
+        'DXB Terminal pickup on arrival or scheduled hotel lobby pickup for departure',
+        'Direct highway route to or from Dubai Marina, Palm Jumeirah, or Downtown',
+        'Smooth luggage assistance & terminal drop-off',
+      ],
+      pickupInfo: 'DXB Airport ↔ Dubai Marina, Palm Jumeirah, Downtown Dubai & nearby areas.',
+      included: [
+        'Private one-way airport transfer (170 AED)',
+        'Coordinated by Shahzaman Khokhar with timely flight scheduling',
+      ],
+      excluded: ['Round-trip billed as two transfers (340 AED)'],
+      bookingOptions: [
+        'DXB Arrival to New Dubai – 170 AED',
+        'New Dubai to DXB Departure – 170 AED',
+      ],
+      featured: false,
+      sortOrder: 13,
+    },
+    {
+      id: 'transfer-airport-departure-old-dubai',
+      slug: 'dubai-airport-departure-old-dubai',
+      title: 'Dubai Airport Departure – Old Dubai (Deira & Bur Dubai)',
+      category: 'Airport Transfers',
+      imageUrl: IMG.oldDubai,
+      description:
+        'Reliable private hotel departure transfer from Deira Dubai or Bur Dubai directly to your departure terminal at Dubai International Airport (DXB).',
+      duration: 'Point-to-Point Departure Transfer',
+      startingPriceAed: 100,
+      priceNote: '100 AED · Deira / Bur Dubai to DXB Airport',
+      availabilityNote: 'Confirmed after departure schedule check with Shahzaman Khokhar',
+      itinerary: [
+        'On-time lobby pickup from your Deira or Bur Dubai hotel',
+        'Luggage loading assistance',
+        'Direct drop-off at DXB Departure Terminal 1, 2, or 3',
+      ],
+      pickupInfo: 'Any hotel or residence in Deira Dubai & Bur Dubai to DXB Airport.',
+      included: [
+        'Private one-way departure transfer (100 AED)',
+        'Direct terminal drop-off & coordination by Shahzaman Khokhar',
+      ],
+      excluded: ['Extra stops unless arranged in advance'],
+      bookingOptions: ['Old Dubai (Deira / Bur Dubai) to DXB Departure – 100 AED'],
+      featured: false,
+      sortOrder: 14,
+    },
+    {
+      id: 'transfer-interhotel-old-dubai',
+      slug: 'inter-hotel-transfer-deira-bur-dubai',
+      title: 'Inter-Hotel Transfer – Deira & Bur Dubai',
+      category: 'Inter-Hotel Transfers',
+      imageUrl: IMG.oldDubai,
+      description:
+        'Convenient point-to-point inter-hotel transfer between properties in Deira Dubai and Bur Dubai with luggage handling.',
+      duration: 'Point-to-Point Hotel Transfer',
+      startingPriceAed: 80,
+      priceNote: '80 AED · Between Deira and Bur Dubai hotels',
+      availabilityNote: 'Confirmed after schedule check with Shahzaman Khokhar',
+      itinerary: [
+        'Scheduled pickup at your current Deira or Bur Dubai hotel',
+        'Luggage transfer across Dubai Creek crossings',
+        'Direct drop-off at your next Old Dubai hotel',
+      ],
+      pickupInfo: 'Between hotels located in Deira Dubai and Bur Dubai.',
+      included: [
+        'Private point-to-point hotel transfer (80 AED)',
+        'Luggage transport & smooth check-in timing coordination',
+      ],
+      excluded: ['Sightseeing detours unless booked'],
+      bookingOptions: ['Inter-Hotel Transfer (Deira ↔ Bur Dubai) – 80 AED'],
+      featured: false,
+      sortOrder: 15,
+    },
+    {
+      id: 'transfer-interhotel-old-to-new-dubai',
+      slug: 'inter-hotel-transfer-old-to-new-dubai',
+      title: 'Inter-Hotel Transfer – Old Dubai to New Dubai',
+      category: 'Inter-Hotel Transfers',
+      imageUrl: IMG.hero,
+      description:
+        'Private inter-hotel relocation transfer from Old Dubai (Deira or Bur Dubai) to New Dubai hotels across Downtown, Business Bay, Palm Jumeirah, or Dubai Marina.',
+      duration: 'Point-to-Point Hotel Transfer',
+      startingPriceAed: 150,
+      priceNote: '150 AED · Old Dubai to Marina, Palm Jumeirah or Downtown',
+      availabilityNote: 'Confirmed after schedule check with Shahzaman Khokhar',
+      itinerary: [
+        'Pickup from your Old Dubai (Deira or Bur Dubai) hotel lobby',
+        'Comfortable luggage-friendly highway transit via Sheikh Zayed Road',
+        'Drop-off at your New Dubai hotel (Downtown, Palm Jumeirah, or Marina)',
+      ],
+      pickupInfo: 'Old Dubai (Deira / Bur Dubai) to Downtown, Palm Jumeirah, or Dubai Marina.',
+      included: [
+        'Private point-to-point inter-hotel transfer (150 AED)',
+        'Coordinated by Program Organizer Shahzaman Khokhar',
+      ],
+      excluded: ['Extended sightseeing stops unless added'],
+      bookingOptions: ['Inter-Hotel Transfer (Old Dubai → New Dubai) – 150 AED'],
+      featured: false,
+      sortOrder: 16,
+    },
+  ];
+
+  const defaultAttractions: Attraction[] = [
+    {
+      id: 'attr-burj-khalifa',
+      slug: 'burj-khalifa',
+      name: 'Burj Khalifa',
+      imageUrl: IMG.burj,
+      shortIntro: 'The world’s tallest architectural icon rising 828 meters above Downtown Dubai.',
+      description:
+        'Soaring over Downtown Dubai, Burj Khalifa anchors the city skyline with observation decks on Levels 124, 125, and 148, surrounded by the choreographed Dubai Fountain and Burj Park promenade.',
+      location: 'Downtown Dubai, Sheikh Mohammed bin Rashid Blvd',
+      lat: 25.1972,
+      lng: 55.2744,
+      facts: [
+        'Stands 828 meters (2,717 feet) tall with more than 160 stories.',
+        'High-speed elevators ascend to Level 124 in roughly one minute.',
+        'Its Y-shaped floor plan draws inspiration from the desert spider lily (Hymenocallis).',
+      ],
+      recommendedTours: ['Burj Khalifa Experience', 'Dubai City Tour', 'Private Dubai Sightseeing'],
+    },
+    {
+      id: 'attr-dubai-mall',
+      slug: 'dubai-mall',
+      name: 'Dubai Mall',
+      imageUrl: IMG.hero,
+      shortIntro: 'A premier shopping, dining, and entertainment destination beside Burj Khalifa.',
+      description:
+        'Located at the foot of Burj Khalifa, Dubai Mall pairs over 1,200 retail stores with indoor attractions including the Dubai Aquarium & Underwater Zoo, Dubai Ice Rink, and waterfront dining terraces.',
+      location: 'Downtown Dubai',
+      lat: 25.1988,
+      lng: 55.2796,
+      facts: [
+        'Houses a 10-million-liter aquarium tank visible directly from the main atrium.',
+        'Connects directly to the Burj Khalifa observation deck entrance and Dubai Fountain boardwalk.',
+      ],
+      recommendedTours: ['Dubai Shopping Tour', 'Burj Khalifa Experience'],
+    },
+    {
+      id: 'attr-museum-future',
+      slug: 'museum-of-the-future',
+      name: 'Museum of the Future',
+      imageUrl: IMG.museum,
+      shortIntro: 'A torus-shaped architectural landmark dedicated to science, space, and future design.',
+      description:
+        'Framed in stainless steel engraved with Arabic calligraphy along Sheikh Zayed Road, the Museum of the Future invites visitors through interactive exhibitions exploring space habitats, climate ecosystems, and human wellbeing.',
+      location: 'Sheikh Zayed Road, Trade Centre 2, Dubai',
+      lat: 25.2192,
+      lng: 55.2819,
+      facts: [
+        'Engineered without internal structural columns across its 77-meter-tall torus shell.',
+        'Its facade features 1,024 stainless-steel panels engraved with inspirational poetry.',
+      ],
+      recommendedTours: ['Private Dubai Sightseeing', 'Dubai City Tour'],
+    },
+    {
+      id: 'attr-burj-al-arab',
+      slug: 'burj-al-arab',
+      name: 'Burj Al Arab',
+      imageUrl: IMG.burjAlArabHd,
+      shortIntro: 'Dubai’s sail-shaped coastal silhouette perched on its own man-made island.',
+      description:
+        'Rising 321 meters off Jumeirah Beach, Burj Al Arab is celebrated worldwide for its billowing dhow-sail architecture, connecting to the mainland by a sweeping private causeway.',
+      location: 'Umm Suqeim 3, Jumeirah Beach Road, Dubai',
+      lat: 25.1412,
+      lng: 55.1852,
+      facts: [
+        'Built on a dedicated artificial island 280 meters offshore from Jumeirah Beach.',
+        'Famous sunset viewpoints are located along Sunset Beach and Souk Madinat Jumeirah.',
+      ],
+      recommendedTours: ['Dubai City Tour', 'Palm Jumeirah Experience'],
+    },
+    {
+      id: 'attr-palm-jumeirah',
+      slug: 'palm-jumeirah',
+      name: 'Palm Jumeirah',
+      imageUrl: IMG.palm,
+      shortIntro: 'An engineered palm-tree island crowned with crescent resorts and waterfront dining.',
+      description:
+        'Extending into the Arabian Gulf, Palm Jumeirah features a central trunk lined with beach clubs and residences, 16 residential fronds, and an 11-kilometer outer crescent connected by boardwalks and monorail.',
+      location: 'Palm Jumeirah, Dubai',
+      lat: 25.1124,
+      lng: 55.139,
+      facts: [
+        'Constructed entirely from natural sand and rock without steel or concrete foundations.',
+        'The View at The Palm offers a 360-degree vantage point 240 meters above the island.',
+      ],
+      recommendedTours: ['Palm Jumeirah Experience', 'Private Dubai Sightseeing'],
+    },
+    {
+      id: 'attr-atlantis',
+      slug: 'atlantis-the-palm',
+      name: 'Atlantis The Palm',
+      imageUrl: IMG.atlantisPalmHd,
+      shortIntro: 'The iconic arch-crowned coastal resort anchoring the apex of Palm Jumeirah.',
+      description:
+        'Positioned at the tip of the Palm Jumeirah crescent, Atlantis The Palm is renowned for its grand Arabian-inspired central archway, Aquaventure Waterpark, and Lost Chambers marine habitats.',
+      location: 'Crescent Road, Palm Jumeirah, Dubai',
+      lat: 25.1304,
+      lng: 55.1171,
+      facts: [
+        'The Palm Monorail terminates directly at Atlantis Aquaventure station.',
+        'Its crescent boardwalk provides sweeping views of the Dubai Marina skyline.',
+      ],
+      recommendedTours: ['Palm Jumeirah Experience', 'Customized Private Tours'],
+    },
+    {
+      id: 'attr-dubai-frame',
+      slug: 'dubai-frame',
+      name: 'Dubai Frame',
+      imageUrl: IMG.dubaiFrameHd,
+      shortIntro: 'A 150-meter golden architectural frame bridging Old and New Dubai.',
+      description:
+        'Set inside Zabeel Park, the Dubai Frame literally frames views of historic Deira and Karama to the north and Sheikh Zayed Road’s skyscrapers to the south from its sky-bridge glass walkway.',
+      location: 'Zabeel Park Jogging Track, Za’abeel, Dubai',
+      lat: 25.2355,
+      lng: 55.3003,
+      facts: [
+        'Comprises two 150-meter vertical towers joined by a 93-meter glass-floored bridge.',
+        'Exterior cladding pattern is inspired by the Expo 2020 geometric motif.',
+      ],
+      recommendedTours: ['Dubai City Tour', 'Private Dubai Sightseeing'],
+    },
+    {
+      id: 'attr-dubai-marina',
+      slug: 'dubai-marina',
+      name: 'Dubai Marina',
+      imageUrl: IMG.marina,
+      shortIntro: 'A vibrant waterfront canal district framed by yachts, cafés, and illuminated towers.',
+      description:
+        'Carved along a three-kilometer stretch of shoreline, Dubai Marina offers an active 7-kilometer waterside promenade, yacht departures, dining terraces, and pedestrian access to JBR and Bluewaters Island.',
+      location: 'Dubai Marina, Dubai',
+      lat: 25.0805,
+      lng: 55.1403,
+      facts: [
+        'One of the world’s largest man-made marina developments.',
+        'Connected by footbridge directly to Bluewaters Island.',
+      ],
+      recommendedTours: ['Dubai Marina Tour', 'Dubai City Tour'],
+    },
+    {
+      id: 'attr-jumeirah-beach',
+      slug: 'jumeirah-beach',
+      name: 'Jumeirah Beach',
+      imageUrl: IMG.burjAlArabHd,
+      shortIntro: 'White sandy Arabian Gulf shoreline with uninterrupted views of Burj Al Arab.',
+      description:
+        'Stretching along Dubai’s coast, Jumeirah Beach offers calm turquoise waters, scenic coastal jogging paths, and the classic open-air photography vantage looking toward Burj Al Arab.',
+      location: 'Jumeirah Coastline, Dubai',
+      lat: 25.1486,
+      lng: 55.1905,
+      facts: [
+        'Popular during late afternoon golden hour for unobstructed coastal photography.',
+        'Features landscaped beachfront walkways and shaded coastal parks.',
+      ],
+      recommendedTours: ['Dubai City Tour', 'Private Dubai Sightseeing'],
+    },
+    {
+      id: 'attr-dubai-creek',
+      slug: 'dubai-creek',
+      name: 'Dubai Creek',
+      imageUrl: IMG.oldDubai,
+      shortIntro: 'The historic saltwater inlet where Dubai’s maritime trading heritage began.',
+      description:
+        'Dividing Bur Dubai and Deira, Dubai Creek remains alive with traditional wooden abra ferries, dhow cargo boats, Al Seef heritage walkways, and bustling Gold and Spice Souks.',
+      location: 'Al Fahidi / Deira Waterfront, Dubai',
+      lat: 25.2669,
+      lng: 55.2974,
+      facts: [
+        'Wooden abra boats still ferry commuters and visitors across the creek daily.',
+        'Bordered by the preserved coral-stone wind towers of Al Fahidi Historical Neighbourhood.',
+      ],
+      recommendedTours: ['Old Dubai Heritage Tour', 'Dubai City Tour'],
+    },
+    {
+      id: 'attr-global-village',
+      slug: 'global-village',
+      name: 'Global Village',
+      imageUrl: IMG.museum,
+      shortIntro: 'Dubai’s seasonal open-air multicultural pavilion park, street food hub, and evening festival.',
+      description:
+        'Operating during Dubai’s cooler winter months, Global Village gathers cultural pavilions from dozens of countries alongside artisan crafts, floating markets, live stage performances, and international street cuisine.',
+      location: 'Sheikh Mohammed Bin Zayed Road (E311), Dubai',
+      lat: 25.0694,
+      lng: 55.3075,
+      facts: [
+        'Seasonal attraction open primarily from October through April/May.',
+        'Best visited in the evening when pavilion facades and fireworks illuminate the park.',
+      ],
+      recommendedTours: ['Customized Private Tours', 'Dubai Shopping Tour'],
+    },
+    {
+      id: 'attr-miracle-garden',
+      slug: 'dubai-miracle-garden',
+      name: 'Dubai Miracle Garden',
+      imageUrl: IMG.desert,
+      shortIntro: 'A sprawling seasonal botanical showcase featuring tens of millions of blooming flowers.',
+      description:
+        'Located in Dubailand, Dubai Miracle Garden transforms desert landscape into floral arches, heart tunnels, and life-size botanical sculptures during the cooler winter season.',
+      location: 'Al Barsha South 3, Dubailand, Dubai',
+      lat: 25.0601,
+      lng: 55.2445,
+      facts: [
+        'Seasonal attraction open during cooler months (typically November to April).',
+        'Showcases floral installations maintained through drip irrigation.',
+      ],
+      recommendedTours: ['Customized Private Tours', 'Private Dubai Sightseeing'],
+    },
+  ];
+
+  const defaultGallery: GalleryItem[] = [
+    {
+      id: 'gal-hd-desert-sunset',
+      title: 'Private 4x4 Sunset Dune Drive — Arabian Desert',
+      category: 'Desert Safari',
+      imageUrl: IMG.desert,
+      caption: 'Full HD sunset expedition across Dubai’s crimson-gold desert dunes.',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'gal-hd-desert-camp',
+      title: 'Starlight Majlis & Firelight Desert Camp',
+      category: 'Desert Safari',
+      imageUrl: IMG.desertCamp,
+      caption: 'Evening Arabian desert dinner camp illuminated by warm lanterns.',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'gal-hd-burj-al-arab',
+      title: 'Burj Al Arab & Jumeirah Coastline Vista',
+      category: 'Dubai Skyline',
+      imageUrl: IMG.burjAlArabHd,
+      caption: 'Golden afternoon views along Umm Suqeim and Burj Al Arab island.',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'gal-hd-dubai-frame',
+      title: 'Dubai Frame Zabeel Panorama',
+      category: 'Dubai Skyline',
+      imageUrl: IMG.dubaiFrameHd,
+      caption: 'Downtown skyline framed cleanly through the golden Dubai Frame in Zabeel Park.',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'gal-hd-atlantis-palm',
+      title: 'Atlantis The Palm Sunset Crescent',
+      category: 'Palm Jumeirah',
+      imageUrl: IMG.atlantisPalmHd,
+      caption: 'Elevated coastal vista across Atlantis The Palm and luxury yachts.',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'gal-usama-burj-al-arab',
+      title: 'Group Tour at Burj Al Arab — Guide Usama Khokhar',
+      category: 'Achievements & Trips',
+      imageUrl: IMG.usamaBurjAlArab,
+      caption: 'Tour Guide Usama Khokhar with an international family tour group at Burj Al Arab.',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'gal-usama-abu-dhabi',
+      title: 'Sheikh Zayed Grand Mosque — Guide Usama Khokhar',
+      category: 'Abu Dhabi',
+      imageUrl: IMG.usamaGrandMosque,
+      caption: 'Twilight Abu Dhabi excursion led by Tour Guide Usama Khokhar.',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'gal-usama-burj-khalifa',
+      title: 'Burj Khalifa Guided Tour — Usama Khokhar',
+      category: 'Burj Khalifa',
+      imageUrl: IMG.usamaBurjKhalifa,
+      caption: 'Guest selfie with Tour Guide Usama Khokhar in Downtown Dubai.',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'gal-usama-marina-night',
+      title: 'Usama Khokhar at Dubai Marina Pier 7',
+      category: 'Dubai Marina',
+      imageUrl: IMG.usamaMarinaNight,
+      caption: 'Evening waterfront tour guiding in Dubai Marina.',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'gal-burj-guests',
+      title: 'Burj Khalifa Promenade Tour',
+      category: 'Burj Khalifa',
+      imageUrl: IMG.tourBurjGuests,
+      caption: 'Full HD guest tour moment standing beneath Burj Khalifa in Downtown Dubai.',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'gal-frame-tour',
+      title: 'Dubai Frame Landmark Visit',
+      category: 'Tourist Experiences',
+      imageUrl: IMG.tourFrameGuests,
+      caption: 'Guided city tour stop beneath the golden Dubai Frame skyline structure.',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'gal-palm-view-guests',
+      title: 'The View at The Palm Night Overlook',
+      category: 'Palm Jumeirah',
+      imageUrl: IMG.tourPalmViewGuests,
+      caption: 'Evening observation terrace view with guests overlooking Palm Jumeirah and Atlantis.',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'gal-palm-night-skyline',
+      title: 'Palm Jumeirah Illuminated Crescent',
+      category: 'Palm Jumeirah',
+      imageUrl: IMG.tourPalmNightSkyline,
+      caption: 'Full HD night vista looking across the Palm Jumeirah trunk toward Atlantis The Palm.',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'gal-1',
+      title: 'Downtown Skyline at Golden Hour',
+      category: 'Dubai Skyline',
+      imageUrl: IMG.hero,
+      caption: 'Burj Khalifa reflected across the Downtown lagoon at sunset.',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'gal-2',
+      title: 'Burj Khalifa Twilight Promenade',
+      category: 'Burj Khalifa',
+      imageUrl: IMG.burj,
+      caption: 'Evening illumination along the Downtown waterfront boardwalk.',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'gal-3',
+      title: 'Arabian Desert Dunes',
+      category: 'Desert Safari',
+      imageUrl: IMG.desert,
+      caption: 'Late afternoon 4x4 crossing along sunlit desert ridges.',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'gal-4',
+      title: 'Dubai Marina Yacht Channel',
+      category: 'Dubai Marina',
+      imageUrl: IMG.marina,
+      caption: 'Private yacht cruising past illuminated Marina towers at dusk.',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'gal-5',
+      title: 'Palm Jumeirah & Crescent Coastline',
+      category: 'Palm Jumeirah',
+      imageUrl: IMG.palm,
+      caption: 'Aerial coastal view across Palm Jumeirah toward Atlantis.',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'gal-6',
+      title: 'Sheikh Zayed Grand Mosque',
+      category: 'Abu Dhabi',
+      imageUrl: IMG.abuDhabi,
+      caption: 'White marble domes mirrored in morning courtyard pools.',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'gal-7',
+      title: 'Dubai Creek & Wooden Abras',
+      category: 'Traditional Dubai',
+      imageUrl: IMG.oldDubai,
+      caption: 'Historic wind-tower skyline viewed from traditional creek ferries.',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'gal-8',
+      title: 'Museum of the Future Boulevard',
+      category: 'Tourist Experiences',
+      imageUrl: IMG.museum,
+      caption: 'Iconic calligraphy steel facade along Sheikh Zayed Road.',
+      createdAt: new Date().toISOString(),
+    },
+  ];
+
+  let admin: AdminRecord | null = null;
+  const envUser = process.env.ADMIN_USERNAME?.trim();
+  const envPass = process.env.ADMIN_PASSWORD?.trim();
+  if (envPass && envPass.length >= 6) {
+    const salt = crypto.randomBytes(16).toString('hex');
+    const hash = crypto.scryptSync(envPass, salt, 64).toString('hex');
+    admin = {
+      username: envUser || 'admin',
+      passwordHash: hash,
+      salt,
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  return {
+    admin,
+    settings: defaultSettings,
+    cms: createDefaultCmsContent(),
+    tours: defaultTours,
+    attractions: defaultAttractions,
+    bookings: [],
+    blockedDates: [],
+    autoBlockConfirmedDates: true,
+    reviews: [], // Strictly no fake testimonials
+    gallery: defaultGallery,
+    inquiries: [],
+  };
+}
+
+let cachedStore: DataStore | null = null;
+
+export function loadStore(): DataStore {
+  if (cachedStore) return cachedStore;
+
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+
+  if (fs.existsSync(STORE_PATH)) {
+    try {
+      const raw = fs.readFileSync(STORE_PATH, 'utf8');
+      const parsed = JSON.parse(raw) as DataStore;
+      let dirty = false;
+
+      // Sync env ADMIN_PASSWORD if explicitly set and no admin exists yet
+      if (!parsed.admin && process.env.ADMIN_PASSWORD?.trim()) {
+        const salt = crypto.randomBytes(16).toString('hex');
+        const hash = crypto.scryptSync(process.env.ADMIN_PASSWORD.trim(), salt, 64).toString('hex');
+        parsed.admin = {
+          username: process.env.ADMIN_USERNAME?.trim() || 'admin',
+          passwordHash: hash,
+          salt,
+          updatedAt: new Date().toISOString(),
+        };
+        dirty = true;
+      }
+      // Ensure guidesNames exists on older persisted store files
+      if (!parsed.settings.guidesNames) {
+        parsed.settings.guidesNames = 'Usama & Abdul Qadir';
+        dirty = true;
+      }
+      // Ensure CMS content defaults exist & migrate smoothly
+      if (!parsed.cms) {
+        parsed.cms = createDefaultCmsContent();
+        if (parsed.settings?.slogan) {
+          parsed.cms.welcomeHeading = parsed.settings.slogan;
+        }
+        if (parsed.settings?.guideBio) {
+          parsed.cms.welcomeDescription = parsed.settings.guideBio;
+        }
+        dirty = true;
+      } else {
+        const defaults = createDefaultCmsContent();
+        if (!parsed.cms.seoPages) {
+          dirty = true;
+        }
+        parsed.cms = {
+          ...defaults,
+          ...parsed.cms,
+          whyCards:
+            Array.isArray(parsed.cms.whyCards) && parsed.cms.whyCards.length > 0
+              ? parsed.cms.whyCards
+              : defaults.whyCards,
+          faqs:
+            Array.isArray(parsed.cms.faqs) && parsed.cms.faqs.length > 0
+              ? parsed.cms.faqs
+              : defaults.faqs,
+          seoPages: {
+            ...defaults.seoPages,
+            ...(parsed.cms.seoPages || {}),
+          },
+        };
+      }
+      if (!Array.isArray(parsed.blockedDates)) {
+        parsed.blockedDates = [];
+        dirty = true;
+      }
+      if (typeof parsed.autoBlockConfirmedDates !== 'boolean') {
+        parsed.autoBlockConfirmedDates = true;
+        dirty = true;
+      }
+      // Migrate Program Organizer, Usama Khokhar & Abdul Qadir Khokhar portraits + new HD generated landmarks/desert safaris once
+      if (
+        parsed.settings.guidePhotoUrl === '/src/assets/images/guide_shahzaman_portrait_1794985270029.jpg' ||
+        parsed.settings.guidePhotoUrl === '/assets/aistudio/WhatsApp_Image_2026-02-26_at_8.20.10_AM_599c0838.jpeg'
+      ) {
+        parsed.settings.guidePhotoUrl = IMG.organizerShahzaman;
+        dirty = true;
+      }
+      if (
+        parsed.settings.guidesNames === 'Usama & Abdul Qadir' ||
+        parsed.settings.guidesNames === 'Usama Khokhar & Abdul Qadir'
+      ) {
+        parsed.settings.guidesNames = 'Usama Khokhar & Abdul Qadir Khokhar';
+        dirty = true;
+      }
+      if (Array.isArray(parsed.tours)) {
+        const tourPhotoMap: Record<string, string[]> = {
+          'tour-dubai-city': [
+            IMG.burjAlArabHd,
+            IMG.dubaiFrameHd,
+            IMG.usamaBurjAlArab,
+            IMG.museumFutureDrive,
+            ...REAL_TOUR_HD_PHOTOS,
+          ],
+          'tour-desert-safari': [IMG.desert, IMG.desertCamp],
+          'tour-private-desert-safari': [IMG.desertCamp, IMG.desert],
+          'tour-abu-dhabi': [IMG.usamaGrandMosque],
+          'tour-burj-khalifa': [IMG.usamaBurjKhalifa, IMG.tourBurjGuests, IMG.tourFrameGuests],
+          'tour-dubai-marina': [IMG.usamaMarinaNight, IMG.tourPalmViewGuests],
+          'tour-palm-jumeirah': [
+            IMG.atlantisPalmHd,
+            IMG.burjAlArabHd,
+            IMG.tourPalmViewGuests,
+            IMG.tourPalmNightSkyline,
+          ],
+          'tour-old-dubai': [
+            IMG.alFahidiCourtyard,
+            IMG.alFahidiFort,
+            IMG.alSeefWaterfront,
+            IMG.dubaiCreekDhow,
+          ],
+          'tour-private-sightseeing': [...REAL_TOUR_HD_PHOTOS],
+          'transfer-airport-arrival-old-dubai': [IMG.dxbAirportArrival],
+          'transfer-airport-new-dubai': [IMG.dxbAirportArrival],
+        };
+        for (const tour of parsed.tours) {
+          if (
+            tour.id === 'tour-desert-safari' &&
+            tour.imageUrl === '/src/assets/images/tour_desert_safari_1794985268483.jpg'
+          ) {
+            tour.imageUrl = IMG.desert;
+            dirty = true;
+          }
+          if (
+            tour.id === 'tour-private-desert-safari' &&
+            tour.imageUrl === '/src/assets/images/tour_desert_safari_1794985268483.jpg'
+          ) {
+            tour.imageUrl = IMG.desertCamp;
+            dirty = true;
+          }
+          if (
+            tour.id === 'tour-palm-jumeirah' &&
+            tour.imageUrl === '/src/assets/images/tour_palm_jumeirah_1794985268392.jpg'
+          ) {
+            tour.imageUrl = IMG.atlantisPalmHd;
+            dirty = true;
+          }
+          const targetList = tourPhotoMap[tour.id];
+          if (!targetList) continue;
+          const uniqueTarget = Array.from(new Set(targetList));
+          if (tour.galleryImages === undefined || tour.galleryImages.length === 0) {
+            tour.galleryImages = uniqueTarget;
+            dirty = true;
+          } else if (
+            !tour.galleryImages.includes(IMG.burjAlArabHd) &&
+            tour.id === 'tour-dubai-city'
+          ) {
+            tour.galleryImages = Array.from(new Set([...uniqueTarget, ...tour.galleryImages]));
+            dirty = true;
+          } else if (
+            !tour.galleryImages.includes(IMG.atlantisPalmHd) &&
+            tour.id === 'tour-palm-jumeirah'
+          ) {
+            tour.galleryImages = Array.from(new Set([...uniqueTarget, ...tour.galleryImages]));
+            dirty = true;
+          }
+        }
+      }
+      if (Array.isArray(parsed.attractions)) {
+        const attrUpdates: Record<string, string> = {
+          'attr-burj-al-arab': IMG.burjAlArabHd,
+          'attr-atlantis': IMG.atlantisPalmHd,
+          'attr-dubai-frame': IMG.dubaiFrameHd,
+          'attr-jumeirah-beach': IMG.burjAlArabHd,
+        };
+        for (const attr of parsed.attractions) {
+          const target = attrUpdates[attr.id];
+          if (
+            target &&
+            (attr.imageUrl === '/src/assets/images/tour_palm_jumeirah_1794985268392.jpg' ||
+              attr.imageUrl === '/src/assets/images/hero_dubai_skyline_1794985266623.jpg')
+          ) {
+            attr.imageUrl = target;
+            dirty = true;
+          }
+        }
+      }
+      if (Array.isArray(parsed.gallery)) {
+        const nowIso = new Date().toISOString();
+        const hdSeedItems: GalleryItem[] = [
+          {
+            id: 'gal-hd-desert-sunset',
+            title: 'Private 4x4 Sunset Dune Drive — Arabian Desert',
+            category: 'Desert Safari',
+            imageUrl: IMG.desert,
+            caption: 'Full HD sunset expedition across Dubai’s crimson-gold desert dunes.',
+            createdAt: nowIso,
+          },
+          {
+            id: 'gal-hd-desert-camp',
+            title: 'Starlight Majlis & Firelight Desert Camp',
+            category: 'Desert Safari',
+            imageUrl: IMG.desertCamp,
+            caption: 'Evening Arabian desert dinner camp illuminated by warm lanterns.',
+            createdAt: nowIso,
+          },
+          {
+            id: 'gal-hd-burj-al-arab',
+            title: 'Burj Al Arab & Jumeirah Coastline Vista',
+            category: 'Dubai Skyline',
+            imageUrl: IMG.burjAlArabHd,
+            caption: 'Golden afternoon views along Umm Suqeim and Burj Al Arab island.',
+            createdAt: nowIso,
+          },
+          {
+            id: 'gal-hd-dubai-frame',
+            title: 'Dubai Frame Zabeel Panorama',
+            category: 'Dubai Skyline',
+            imageUrl: IMG.dubaiFrameHd,
+            caption: 'Downtown skyline framed cleanly through the golden Dubai Frame in Zabeel Park.',
+            createdAt: nowIso,
+          },
+          {
+            id: 'gal-hd-atlantis-palm',
+            title: 'Atlantis The Palm Sunset Crescent',
+            category: 'Palm Jumeirah',
+            imageUrl: IMG.atlantisPalmHd,
+            caption: 'Elevated coastal vista across Atlantis The Palm and luxury yachts.',
+            createdAt: nowIso,
+          },
+          {
+            id: 'gal-usama-burj-al-arab',
+            title: 'Group Tour at Burj Al Arab — Guide Usama Khokhar',
+            category: 'Achievements & Trips',
+            imageUrl: IMG.usamaBurjAlArab,
+            caption:
+              'Tour Guide Usama Khokhar with an international family tour group at Burj Al Arab.',
+            createdAt: nowIso,
+          },
+          {
+            id: 'gal-usama-abu-dhabi',
+            title: 'Sheikh Zayed Grand Mosque — Guide Usama Khokhar',
+            category: 'Abu Dhabi',
+            imageUrl: IMG.usamaGrandMosque,
+            caption: 'Twilight Abu Dhabi excursion led by Tour Guide Usama Khokhar.',
+            createdAt: nowIso,
+          },
+          {
+            id: 'gal-usama-burj-khalifa',
+            title: 'Burj Khalifa Guided Tour — Usama Khokhar',
+            category: 'Burj Khalifa',
+            imageUrl: IMG.usamaBurjKhalifa,
+            caption: 'Guest selfie with Tour Guide Usama Khokhar in Downtown Dubai.',
+            createdAt: nowIso,
+          },
+          {
+            id: 'gal-usama-marina-night',
+            title: 'Usama Khokhar at Dubai Marina Pier 7',
+            category: 'Dubai Marina',
+            imageUrl: IMG.usamaMarinaNight,
+            caption: 'Evening waterfront tour guiding in Dubai Marina.',
+            createdAt: nowIso,
+          },
+          {
+            id: 'gal-usama-jumeirah',
+            title: 'Jumeirah Coastline Tour — Usama Khokhar',
+            category: 'Achievements & Trips',
+            imageUrl: IMG.usamaJumeirah,
+            caption: 'Personal guided coastal walk with Tour Guide Usama Khokhar.',
+            createdAt: nowIso,
+          },
+          {
+            id: 'gal-dxb-airport-welcome',
+            title: 'Dubai Airport (DXB) Guest Welcome',
+            category: 'Airport Transfers',
+            imageUrl: IMG.dxbAirportArrival,
+            caption: 'Arrival meet-and-greet service inside Dubai International Airport.',
+            createdAt: nowIso,
+          },
+          {
+            id: 'gal-museum-future-drive',
+            title: 'Museum of the Future Avenue',
+            category: 'Tourist Experiences',
+            imageUrl: IMG.museumFutureDrive,
+            caption: 'City sightseeing route passing the Museum of the Future.',
+            createdAt: nowIso,
+          },
+          {
+            id: 'gal-al-fahidi-courtyard',
+            title: 'Al Fahidi Wind-Tower Courtyard',
+            category: 'Traditional Dubai',
+            imageUrl: IMG.alFahidiCourtyard,
+            caption: 'Historic Bastakiya lanes on our Old Dubai Heritage Tour.',
+            createdAt: nowIso,
+          },
+          {
+            id: 'gal-al-fahidi-fort',
+            title: 'Al Fahidi Fort Historic Landmark',
+            category: 'Traditional Dubai',
+            imageUrl: IMG.alFahidiFort,
+            caption: 'Dubai’s oldest coral-stone fort in Old Dubai.',
+            createdAt: nowIso,
+          },
+          {
+            id: 'gal-al-seef-waterfront',
+            title: 'Al Seef Heritage Waterfront',
+            category: 'Traditional Dubai',
+            imageUrl: IMG.alSeefWaterfront,
+            caption: 'Evening creek promenade along Al Seef Heritage District.',
+            createdAt: nowIso,
+          },
+        ];
+        const existingUrls = new Set(parsed.gallery.map((g) => g.imageUrl));
+        const missingItems = hdSeedItems.filter((item) => !existingUrls.has(item.imageUrl));
+        if (missingItems.length > 0) {
+          parsed.gallery = [...missingItems, ...parsed.gallery];
+          dirty = true;
+        }
+      }
+      if (dirty) {
+        saveStore(parsed);
+      }
+      cachedStore = parsed;
+      return cachedStore;
+    } catch (err) {
+      console.error('Failed to read store.json, initializing fresh store:', err);
+    }
+  }
+
+  const initial = createInitialStore();
+  saveStore(initial);
+  cachedStore = initial;
+  return cachedStore;
+}
+
+export function saveStore(store: DataStore): void {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+  const tmpPath = `${STORE_PATH}.${crypto.randomUUID()}.tmp`;
+  fs.writeFileSync(tmpPath, JSON.stringify(store, null, 2), 'utf8');
+  fs.renameSync(tmpPath, STORE_PATH);
+  cachedStore = store;
+  invalidateFastCache();
+}
+
+export function hashPassword(password: string, salt?: string): { hash: string; salt: string } {
+  const actualSalt = salt || crypto.randomBytes(16).toString('hex');
+  const derived = crypto.scryptSync(password, actualSalt, 64).toString('hex');
+  return { hash: derived, salt: actualSalt };
+}
+
+export function verifyPassword(password: string, hash: string, salt: string): boolean {
+  try {
+    const derived = crypto.scryptSync(password, salt, 64);
+    const stored = Buffer.from(hash, 'hex');
+    if (derived.length !== stored.length) return false;
+    return crypto.timingSafeEqual(derived, stored);
+  } catch {
+    return false;
+  }
+}

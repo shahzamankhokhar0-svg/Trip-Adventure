@@ -1,0 +1,6 @@
+{
+  "name": "TRIP ADVENTURE – Dubai Tour Guide",
+  "description": "Luxury personal tour guide services in Dubai, UAE by Shahzaman. Explore Dubai city tours, desert safaris, attractions, and online or WhatsApp booking.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
