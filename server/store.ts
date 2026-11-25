@@ -10,6 +10,7 @@ import type {
   ContactInquiry,
   CustomerReview,
   GalleryItem,
+  NewsletterSubscriber,
   SeoPagesMap,
   SiteSettings,
   TourPackage,
@@ -34,10 +35,12 @@ export interface DataStore {
   reviews: CustomerReview[];
   gallery: GalleryItem[];
   inquiries: ContactInquiry[];
+  newsletterSubscribers: NewsletterSubscriber[];
 }
 
 const DATA_DIR = path.resolve(process.cwd(), 'data');
 const STORE_PATH = path.join(DATA_DIR, 'store.json');
+const NEWSLETTER_PATH = path.join(DATA_DIR, 'newsletter.json');
 
 const IMG = {
   hero: '/src/assets/images/hero_dubai_skyline_1794985266623.jpg',
@@ -104,9 +107,9 @@ export function createDefaultSeoPages(): SeoPagesMap {
         'Explore Dubai attractions, desert safaris, half-day & full-day private tours, and DXB airport transfers in AED with TRIP ADVENTURE.',
     },
     about: {
-      title: 'About TRIP ADVENTURE – Shahzaman, Usama & Abdul Qadir',
+      title: 'About TRIP ADVENTURE – Shahzaman, Usama Khokhar & Abdul Qadir Khokhar',
       description:
-        'Meet Program Organizer Shahzaman Khokhar and Dubai tour guides Usama & Abdul Qadir guiding private city tours and desert safaris.',
+        'Meet Program Organizer Shahzaman Khokhar and Dubai tour guides Usama Khokhar & Abdul Qadir Khokhar guiding private city tours and desert safaris.',
     },
     tours: {
       title: 'Dubai Tours, Desert Safaris & Transfers | TRIP ADVENTURE',
@@ -1128,14 +1131,6 @@ export function createInitialStore(): DataStore {
       createdAt: new Date().toISOString(),
     },
     {
-      id: 'gal-usama-marina-night',
-      title: 'Usama Khokhar at Dubai Marina Pier 7',
-      category: 'Dubai Marina',
-      imageUrl: IMG.usamaMarinaNight,
-      caption: 'Evening waterfront tour guiding in Dubai Marina.',
-      createdAt: new Date().toISOString(),
-    },
-    {
       id: 'gal-burj-guests',
       title: 'Burj Khalifa Promenade Tour',
       category: 'Burj Khalifa',
@@ -1259,6 +1254,7 @@ export function createInitialStore(): DataStore {
     reviews: [], // Strictly no fake testimonials
     gallery: defaultGallery,
     inquiries: [],
+    newsletterSubscribers: [],
   };
 }
 
@@ -1510,14 +1506,6 @@ export function loadStore(): DataStore {
             createdAt: nowIso,
           },
           {
-            id: 'gal-usama-marina-night',
-            title: 'Usama Khokhar at Dubai Marina Pier 7',
-            category: 'Dubai Marina',
-            imageUrl: IMG.usamaMarinaNight,
-            caption: 'Evening waterfront tour guiding in Dubai Marina.',
-            createdAt: nowIso,
-          },
-          {
             id: 'gal-usama-jumeirah',
             title: 'Jumeirah Coastline Tour — Usama Khokhar',
             category: 'Achievements & Trips',
@@ -1566,12 +1554,41 @@ export function loadStore(): DataStore {
             createdAt: nowIso,
           },
         ];
+        const separatedIds = new Set(['gal-usama-marina-night']);
+        const separatedUrls = new Set([
+          IMG.organizerShahzaman,
+          IMG.usamaKhokharGuide,
+          IMG.abdulQadirKhokharGuide,
+        ]);
+        const filteredGallery = parsed.gallery.filter(
+          (g) => !separatedIds.has(g.id) && !separatedUrls.has(g.imageUrl)
+        );
+        if (filteredGallery.length !== parsed.gallery.length) {
+          parsed.gallery = filteredGallery;
+          dirty = true;
+        }
         const existingUrls = new Set(parsed.gallery.map((g) => g.imageUrl));
         const missingItems = hdSeedItems.filter((item) => !existingUrls.has(item.imageUrl));
         if (missingItems.length > 0) {
           parsed.gallery = [...missingItems, ...parsed.gallery];
           dirty = true;
         }
+      }
+      if (!Array.isArray(parsed.newsletterSubscribers)) {
+        let fromSeparateFile: NewsletterSubscriber[] = [];
+        if (fs.existsSync(NEWSLETTER_PATH)) {
+          try {
+            const rawNews = fs.readFileSync(NEWSLETTER_PATH, 'utf8');
+            const parsedNews = JSON.parse(rawNews);
+            if (Array.isArray(parsedNews)) {
+              fromSeparateFile = parsedNews;
+            }
+          } catch {
+            fromSeparateFile = [];
+          }
+        }
+        parsed.newsletterSubscribers = fromSeparateFile;
+        dirty = true;
       }
       if (dirty) {
         saveStore(parsed);
@@ -1584,6 +1601,17 @@ export function loadStore(): DataStore {
   }
 
   const initial = createInitialStore();
+  if (fs.existsSync(NEWSLETTER_PATH)) {
+    try {
+      const rawNews = fs.readFileSync(NEWSLETTER_PATH, 'utf8');
+      const parsedNews = JSON.parse(rawNews);
+      if (Array.isArray(parsedNews)) {
+        initial.newsletterSubscribers = parsedNews;
+      }
+    } catch {
+      // Ignore malformed newsletter.json
+    }
+  }
   saveStore(initial);
   cachedStore = initial;
   return cachedStore;
@@ -1596,6 +1624,15 @@ export function saveStore(store: DataStore): void {
   const tmpPath = `${STORE_PATH}.${crypto.randomUUID()}.tmp`;
   fs.writeFileSync(tmpPath, JSON.stringify(store, null, 2), 'utf8');
   fs.renameSync(tmpPath, STORE_PATH);
+
+  const tmpNewsletterPath = `${NEWSLETTER_PATH}.${crypto.randomUUID()}.tmp`;
+  fs.writeFileSync(
+    tmpNewsletterPath,
+    JSON.stringify(store.newsletterSubscribers || [], null, 2),
+    'utf8'
+  );
+  fs.renameSync(tmpNewsletterPath, NEWSLETTER_PATH);
+
   cachedStore = store;
   invalidateFastCache();
 }

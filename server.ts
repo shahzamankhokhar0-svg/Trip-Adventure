@@ -40,6 +40,7 @@ import type {
   FaqCategory,
   GalleryItem,
   MediaAsset,
+  NewsletterSubscriber,
   PublicPageKey,
   SeoPagesMap,
   TourPackage,
@@ -236,6 +237,9 @@ function computeDashboardStats(store: ReturnType<typeof loadStore>): DashboardSt
     pendingReviews: store.reviews.filter((r) => r.status === 'pending').length,
     totalTours: store.tours.length,
     totalGallery: store.gallery.length,
+    newsletterSubscribers: (store.newsletterSubscribers || []).filter(
+      (s) => s.status === 'subscribed'
+    ).length,
   };
 }
 
@@ -675,6 +679,67 @@ async function startServer() {
     });
   });
 
+  // Subscribe email to special Dubai tour offers newsletter (persisted to data/newsletter.json + data/store.json)
+  app.post('/api/newsletter', (req, res) => {
+    const store = loadStore();
+    const email = sanitizeText(req.body?.email, 160).toLowerCase();
+    const name = sanitizeText(req.body?.name, 80);
+    const source = sanitizeText(req.body?.source, 40) || 'footer';
+
+    if (!email || !isValidEmail(email)) {
+      return res.status(400).json({ error: 'Please enter a valid email address.' });
+    }
+
+    if (!Array.isArray(store.newsletterSubscribers)) {
+      store.newsletterSubscribers = [];
+    }
+
+    const existing = store.newsletterSubscribers.find(
+      (s) => s.email.toLowerCase() === email
+    );
+
+    if (existing) {
+      if (existing.status === 'subscribed') {
+        return res.json({
+          ok: true,
+          alreadySubscribed: true,
+          subscriber: existing,
+          message: 'This email is already subscribed to Dubai tour offers.',
+        });
+      }
+      existing.status = 'subscribed';
+      existing.source = source || existing.source;
+      if (name) existing.name = name;
+      existing.createdAt = new Date().toISOString();
+      saveStore(store);
+      return res.json({
+        ok: true,
+        alreadySubscribed: false,
+        subscriber: existing,
+        message: 'Welcome back! Your email has been reactivated for special Dubai tour offers.',
+      });
+    }
+
+    const subscriber: NewsletterSubscriber = {
+      id: `nl-${crypto.randomUUID()}`,
+      email,
+      ...(name ? { name } : {}),
+      status: 'subscribed',
+      source,
+      createdAt: new Date().toISOString(),
+    };
+
+    store.newsletterSubscribers.unshift(subscriber);
+    saveStore(store);
+
+    return res.status(201).json({
+      ok: true,
+      alreadySubscribed: false,
+      subscriber,
+      message: 'Subscribed! You will receive special Dubai tour offers in AED.',
+    });
+  });
+
   // --- ADMIN AUTHENTICATION ROUTES ---
   app.get('/api/admin/auth-status', (req, res) => {
     const store = loadStore();
@@ -794,6 +859,7 @@ async function startServer() {
       gallery: store.gallery,
       settings: store.settings,
       cms: store.cms,
+      newsletterSubscribers: store.newsletterSubscribers || [],
     });
   });
 
@@ -1217,6 +1283,37 @@ async function startServer() {
     const before = store.inquiries.length;
     store.inquiries = store.inquiries.filter((i) => i.id !== req.params.id);
     if (store.inquiries.length === before) return res.status(404).json({ error: 'Inquiry not found.' });
+    saveStore(store);
+    res.json({ ok: true });
+  });
+
+  // Admin Newsletter Subscribers Management
+  app.get('/api/admin/newsletter', requireAdmin, (_req, res) => {
+    const store = loadStore();
+    res.json({ subscribers: store.newsletterSubscribers || [] });
+  });
+
+  app.patch('/api/admin/newsletter/:id', requireAdmin, (req, res) => {
+    const store = loadStore();
+    const list = store.newsletterSubscribers || [];
+    const sub = list.find((s) => s.id === req.params.id);
+    if (!sub) return res.status(404).json({ error: 'Subscriber not found.' });
+    const status = req.body?.status;
+    if (status === 'subscribed' || status === 'unsubscribed') {
+      sub.status = status;
+    }
+    saveStore(store);
+    res.json({ subscriber: sub });
+  });
+
+  app.delete('/api/admin/newsletter/:id', requireAdmin, (req, res) => {
+    const store = loadStore();
+    const list = store.newsletterSubscribers || [];
+    const next = list.filter((s) => s.id !== req.params.id);
+    if (next.length === list.length) {
+      return res.status(404).json({ error: 'Subscriber not found.' });
+    }
+    store.newsletterSubscribers = next;
     saveStore(store);
     res.json({ ok: true });
   });

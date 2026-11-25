@@ -28,6 +28,8 @@ import { TourCard } from './components/TourCard.tsx';
 import { PWAInstallButton } from './components/PWAInstallButton.tsx';
 import { OfflineIndicator } from './components/OfflineIndicator.tsx';
 import { FaqSection } from './components/FaqSection.tsx';
+import { FooterNewsletter } from './components/FooterNewsletter.tsx';
+import { STATIC_BOOTSTRAP_DATA } from './data/staticCatalog.ts';
 
 const TourDetailModal = lazy(() =>
   import('./components/TourDetailModal.tsx').then((m) => ({ default: m.TourDetailModal }))
@@ -58,6 +60,11 @@ const AchievementsTripsSection = lazy(() =>
     default: m.AchievementsTripsSection,
   }))
 );
+const TeamSpotlightSection = lazy(() =>
+  import('./components/TeamSpotlightSection.tsx').then((m) => ({
+    default: m.TeamSpotlightSection,
+  }))
+);
 
 const BOOTSTRAP_CACHE_KEY = 'ta_fast_bootstrap_v1';
 
@@ -67,6 +74,13 @@ function readCachedBootstrap(): PublicBootstrapData | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as PublicBootstrapData;
     if (parsed && Array.isArray(parsed.tours) && parsed.settings) {
+      if (Array.isArray(parsed.gallery)) {
+        parsed.gallery = parsed.gallery.filter(
+          (item) =>
+            item.id !== 'gal-usama-marina-night' &&
+            !item.id.startsWith('gal-organizer')
+        );
+      }
       return parsed;
     }
     return null;
@@ -192,14 +206,21 @@ export default function App() {
   const [route, setRoute] = useState<PageRoute>(() =>
     parseRouteFromPath(window.location.pathname)
   );
-  const [initialCache] = useState<PublicBootstrapData | null>(() => readCachedBootstrap());
-  const [data, setData] = useState<PublicBootstrapData | null>(initialCache);
-  const [loading, setLoading] = useState(!initialCache);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [data, setData] = useState<PublicBootstrapData>(
+    () => readCachedBootstrap() || STATIC_BOOTSTRAP_DATA
+  );
   const [mapsQuotaExceeded, setMapsQuotaExceeded] = useState(false);
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [selectedTourModal, setSelectedTourModal] = useState<TourPackage | null>(null);
+  const [selectedTourModal, setSelectedTourModal] = useState<TourPackage | null>(() => {
+    const pathname = window.location.pathname;
+    if (pathname.startsWith('/tours/')) {
+      const slug = pathname.replace('/tours/', '').replace(/\/+$/, '');
+      const seed = readCachedBootstrap() || STATIC_BOOTSTRAP_DATA;
+      return seed.tours.find((tourItem) => tourItem.slug === slug) || null;
+    }
+    return null;
+  });
   const [preselectedTourId, setPreselectedTourId] = useState<string | null>(null);
   const [bookingInitialTab, setBookingInitialTab] = useState<'book' | 'status'>('book');
   const [tourCategoryFilter, setTourCategoryFilter] = useState('All');
@@ -207,31 +228,25 @@ export default function App() {
 
   const fetchBootstrap = useCallback(async (forceFresh = false) => {
     try {
-      setLoadError(null);
       const res = await fetch('/api/fast/bootstrap', forceFresh ? { cache: 'reload' } : undefined);
-      if (!res.ok) throw new Error('Failed to load TRIP ADVENTURE catalog.');
+      if (!res.ok) return;
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) return;
       const payload = (await res.json()) as PublicBootstrapData;
-      setData(payload);
-      writeCachedBootstrap(payload);
+      if (payload && Array.isArray(payload.tours) && payload.tours.length > 0 && payload.settings) {
+        setData(payload);
+        writeCachedBootstrap(payload);
 
-      // Support deep linking /tours/:slug
-      const pathname = window.location.pathname;
-      if (pathname.startsWith('/tours/')) {
-        const slug = pathname.replace('/tours/', '').replace(/\/+$/, '');
-        const match = payload.tours.find((t) => t.slug === slug);
-        if (match) setSelectedTourModal(match);
-      }
-    } catch (err: unknown) {
-      setData((current) => {
-        if (!current) {
-          setLoadError(
-            err instanceof Error ? err.message : 'Unable to connect to TRIP ADVENTURE server.'
-          );
+        // Support deep linking /tours/:slug
+        const pathname = window.location.pathname;
+        if (pathname.startsWith('/tours/')) {
+          const slug = pathname.replace('/tours/', '').replace(/\/+$/, '');
+          const match = payload.tours.find((tourItem) => tourItem.slug === slug);
+          if (match) setSelectedTourModal(match);
         }
-        return current;
-      });
-    } finally {
-      setLoading(false);
+      }
+    } catch {
+      // Static hardcoded catalog remains active offline / without backend APIs
     }
   }, []);
 
@@ -380,36 +395,6 @@ export default function App() {
       return searchable.includes(query);
     });
   }, [data, tourCategoryFilter, tourSearchQuery]);
-
-  if (loading) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-[#0B0B0D] text-white">
-        <Loader2 className="h-8 w-8 animate-spin text-[#C59B38]" />
-        <p className="mt-4 font-display text-2xl tracking-wide text-[#F5E4B8]">
-          TRIP ADVENTURE
-        </p>
-      </div>
-    );
-  }
-
-  if (loadError || !data) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-[#FAF9F6] p-6 text-center">
-        <Compass className="h-10 w-10 text-[#C59B38]" />
-        <h1 className="mt-4 font-display text-3xl font-semibold text-[#111114]">
-          Unable to Load TRIP ADVENTURE
-        </h1>
-        <p className="mt-2 max-w-md text-sm text-neutral-600">{loadError}</p>
-        <button
-          type="button"
-          onClick={() => fetchBootstrap(true)}
-          className="mt-6 rounded-lg bg-[#0B0B0D] px-6 py-3 text-xs font-semibold text-white"
-        >
-          Retry Connection
-        </button>
-      </div>
-    );
-  }
 
   const { tours, attractions, reviews, gallery, settings, cms, mapsApiKey } = data;
   const featuredTours = tours.filter((t) => t.featured).slice(0, 6);
@@ -1038,6 +1023,14 @@ export default function App() {
               )}
             </section>
 
+            {/* PROGRAM ORGANIZER & TOUR GUIDES (SEPARATE FROM PHOTO GALLERY) */}
+            <Suspense fallback={null}>
+              <TeamSpotlightSection
+                settings={settings}
+                onMeetTeamClick={() => navigateTo('about')}
+              />
+            </Suspense>
+
             {/* PHOTO GALLERY PREVIEW */}
             <section className="border-t border-neutral-200 bg-white py-16">
               <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -1377,7 +1370,7 @@ export default function App() {
       <footer className="border-t border-white/10 bg-[#0B0B0D] text-neutral-300">
         <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
           <div className="grid gap-10 md:grid-cols-12">
-            <div className="md:col-span-4 space-y-3">
+            <div className="md:col-span-6 lg:col-span-3 space-y-3">
               <p className="font-display text-2xl font-semibold tracking-wider text-[#F5E4B8]">
                 {settings.brandName}
               </p>
@@ -1387,9 +1380,9 @@ export default function App() {
               </div>
             </div>
 
-            <div className="md:col-span-4">
+            <div className="md:col-span-6 lg:col-span-2">
               <p className="text-xs font-semibold text-white">Explore</p>
-              <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+              <div className="mt-3 grid grid-cols-2 gap-2 text-xs lg:grid-cols-1">
                 {navLinks.map((item) => (
                   <button
                     key={item.id}
@@ -1417,7 +1410,7 @@ export default function App() {
               </div>
             </div>
 
-            <div className="md:col-span-4 space-y-2.5 text-xs">
+            <div className="md:col-span-6 lg:col-span-3 space-y-2.5 text-xs">
               <p className="font-semibold text-white">Dubai Contact Desk</p>
               <p className="flex items-center gap-2 text-neutral-400">
                 <Phone className="h-3.5 w-3.5 text-[#C59B38]" />
@@ -1431,6 +1424,10 @@ export default function App() {
                 <MapPin className="h-3.5 w-3.5 text-[#C59B38]" />
                 <span>{settings.address}</span>
               </p>
+            </div>
+
+            <div className="md:col-span-6 lg:col-span-4">
+              <FooterNewsletter />
             </div>
           </div>
 

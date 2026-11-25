@@ -114,6 +114,15 @@ export interface ContactInquiry {
   createdAt: string;
 }
 
+export interface NewsletterSubscriber {
+  id: string;
+  email: string;
+  name?: string;
+  status: 'subscribed' | 'unsubscribed';
+  source: string;
+  createdAt: string;
+}
+
 export interface SiteSettings {
   brandName: string;
   slogan: string;
@@ -238,6 +247,7 @@ export interface DashboardStats {
   pendingReviews: number;
   totalTours: number;
   totalGallery: number;
+  newsletterSubscribers?: number;
 }
 
 export interface PublicBootstrapData {

@@ -42,6 +42,7 @@ import type {
   DashboardStats,
   GalleryItem,
   MediaAsset,
+  NewsletterSubscriber,
   NotificationChannelLog,
   NotificationConfigStatus,
   SeoPagesMap,
@@ -56,6 +57,7 @@ import { AdminCmsEditor } from './AdminCmsEditor.tsx';
 import { AdminMediaManager } from './AdminMediaManager.tsx';
 import { AdminAnalyticsTab } from './AdminAnalyticsTab.tsx';
 import { AdminSeoEditor } from './AdminSeoEditor.tsx';
+import { AdminNewsletterTab } from './AdminNewsletterTab.tsx';
 import { AvailabilityCalendar, formatDisplayDate } from './AvailabilityCalendar.tsx';
 
 interface AdminDashboardProps {
@@ -73,6 +75,7 @@ type AdminTab =
   | 'media'
   | 'reviews'
   | 'inquiries'
+  | 'newsletter'
   | 'settings';
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
@@ -111,6 +114,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [reviews, setReviews] = useState<CustomerReview[]>([]);
   const [inquiries, setInquiries] = useState<ContactInquiry[]>([]);
+  const [newsletterSubscribers, setNewsletterSubscribers] = useState<NewsletterSubscriber[]>([]);
   const [settingsForm, setSettingsForm] = useState<SiteSettings | null>(null);
   const [cmsForm, setCmsForm] = useState<CmsContent | null>(null);
   const [mediaAssets, setMediaAssets] = useState<MediaAsset[]>([]);
@@ -179,6 +183,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       setGallery(data.gallery);
       setReviews(data.reviews);
       setInquiries(data.inquiries);
+      setNewsletterSubscribers(
+        Array.isArray(data.newsletterSubscribers) ? data.newsletterSubscribers : []
+      );
       setSettingsForm(data.settings);
       if (data.cms) setCmsForm(data.cms);
       await fetchMedia();
@@ -917,7 +924,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             { id: 'gallery', label: 'Gallery Photos', icon: ImageIcon },
             { id: 'media', label: 'Media Library', icon: FolderOpen },
             { id: 'reviews', label: 'Reviews', icon: Star, badge: stats?.pendingReviews },
-            { id: 'inquiries', label: 'Inquiries', icon: Mail, badge: stats?.unreadInquiries },
+            { id: 'inquiries', label: 'Inquiries', icon: MessageSquare, badge: stats?.unreadInquiries },
+            { id: 'newsletter', label: 'Newsletter', icon: Mail, badge: stats?.newsletterSubscribers },
             { id: 'settings', label: 'Contact & About Us', icon: Settings },
           ] as Array<{
             id: AdminTab;
@@ -967,6 +975,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           onChange={(nextSeo) => setCmsForm({ ...cmsForm, seoPages: nextSeo })}
           onSave={handleSaveSeo}
           saving={savingSeo}
+        />
+      )}
+
+      {/* NEWSLETTER SUBSCRIBERS TAB */}
+      {activeTab === 'newsletter' && (
+        <AdminNewsletterTab
+          subscribers={newsletterSubscribers}
+          onRefresh={fetchDashboard}
+          onToast={showToast}
+          onError={(msg) => setErrorBanner(msg)}
         />
       )}
 

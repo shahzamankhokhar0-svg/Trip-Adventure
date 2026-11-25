@@ -25,42 +25,6 @@ export interface AchievementTripMedia {
 
 const ACHIEVEMENTS_AND_TRIPS: AchievementTripMedia[] = [
   {
-    id: 'ach-organizer-shahzaman',
-    kind: 'image',
-    group: 'achievement',
-    badge: 'Program Organizer · Shahzaman Khokhar',
-    title: 'Shahzaman Khokhar — TRIP ADVENTURE Program Organizer',
-    location: 'Dubai & UAE Operations HQ',
-    caption:
-      'Executive itinerary coordination across Dubai private tours, desert safaris, and DXB airport transfers.',
-    src: '/assets/aistudio/WhatsApp_Image_2026-11-20_at_10.06.42_AM_896c4520.jpeg',
-    focalClass: 'object-top',
-  },
-  {
-    id: 'ach-usama-guide-card',
-    kind: 'image',
-    group: 'achievement',
-    badge: 'Dubai Tour Guide · Usama Khokhar',
-    title: 'Usama Khokhar — Certified Sightseeing & Marina Guide',
-    location: 'Dubai Marina & UAE Tours',
-    caption:
-      'Tour Guide Usama Khokhar leading city sightseeing, group adventures, and waterfront excursions.',
-    src: '/assets/aistudio/WhatsApp_Image_2026-11-20_at_10.25.24_AM_cd873d4c.jpeg',
-    focalClass: 'object-top',
-  },
-  {
-    id: 'ach-abdul-qadir-guide',
-    kind: 'image',
-    group: 'achievement',
-    badge: 'Dubai Tour Guide · Abdul Qadir Khokhar',
-    title: 'Abdul Qadir Khokhar — Official TRIP ADVENTURE Guide',
-    location: 'UAE Touring & Expeditions',
-    caption:
-      'Tour Guide Abdul Qadir Khokhar dedicated to curated family groups, sightseeing routes, and desert trips.',
-    src: '/assets/aistudio/WhatsApp_Image_2026-11-20_at_10.20.26_AM_46584150.jpeg',
-    focalClass: 'object-top',
-  },
-  {
     id: 'ach-burj-al-arab-group',
     kind: 'image',
     group: 'achievement',
