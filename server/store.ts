@@ -215,7 +215,7 @@ export function createDefaultCmsContent(): CmsContent {
         category: 'Tours',
         question: 'Do city and private sightseeing tours offer Half-Day and Full-Day AED rates?',
         answer:
-          'Yes. Clear Half-Day (4 Hours) and Full-Day (8 Hours) rates are available in AED — including Dubai City Tour (350 AED Half-Day / 600 AED Full-Day), Old Dubai Heritage Tour (200 AED Half-Day / 420 AED Full-Day), Private Dubai Sightseeing (400 AED Half-Day / 700 AED Full-Day), and Abu Dhabi City Tour (750 AED Full-Day).',
+          'Yes. Clear Half-Day (4 Hours, up to 250 AED) and Full-Day (8 Hours, up to 500 AED) rates are available in AED — including Half-Day Dubai Tour (250 AED), Full-Day Dubai Tour (500 AED), Dubai City Tour (250 AED Half-Day / 500 AED Full-Day), Old Dubai Heritage Tour (200 AED Half-Day / 420 AED Full-Day), and Abu Dhabi City Tour (500 AED Full-Day).',
       },
       {
         id: 'tours-team-guides',
@@ -326,6 +326,75 @@ export function createInitialStore(): DataStore {
 
   const defaultTours: TourPackage[] = [
     {
+      id: 'tour-half-day-dubai',
+      slug: 'half-day-dubai-tour',
+      title: 'Half-Day Dubai Tour (4 Hours)',
+      category: 'Dubai City Tour',
+      imageUrl: IMG.dubaiFrameHd,
+      galleryImages: [IMG.dubaiFrameHd, IMG.burjAlArabHd, IMG.tourFrameGuests],
+      description:
+        'A focused 4-hour Half-Day private Dubai sightseeing tour covering top historic and modern highlights at a maximum rate of 250 AED.',
+      duration: 'Half-Day (4 Hours)',
+      startingPriceAed: 250,
+      priceNote: 'Half-Day Tour (4 Hours): 250 AED',
+      availabilityNote: 'Confirmed after schedule check with Shahzaman Khokhar',
+      itinerary: [
+        'Hotel or residence pickup in Dubai',
+        'Al Fahidi Historical District & Dubai Creek scenic stop',
+        'Jumeirah Mosque exterior & Burj Al Arab beachfront photo stop',
+        'Downtown Dubai & Burj Khalifa / Dubai Mall drop-off or hotel return',
+      ],
+      pickupInfo: 'Complimentary pickup & drop-off from your Dubai hotel or residence.',
+      included: [
+        'English-speaking Tour Guide (Usama or Abdul Qadir)',
+        'Program coordination by Shahzaman Khokhar',
+        'Half-Day (4 Hours) curated sightseeing up to 250 AED max',
+        'Bottled mineral water during the tour',
+      ],
+      excluded: [
+        'Attraction observation deck tickets unless requested',
+        'Meals, personal shopping, and gratuities',
+      ],
+      bookingOptions: ['Half-Day Tour (4 Hours) – 250 AED'],
+      featured: true,
+      sortOrder: 1,
+    },
+    {
+      id: 'tour-full-day-dubai',
+      slug: 'full-day-dubai-tour',
+      title: 'Full-Day Dubai Tour (8 Hours)',
+      category: 'Dubai City Tour',
+      imageUrl: IMG.hero,
+      galleryImages: [...REAL_TOUR_HD_PHOTOS],
+      description:
+        'A complete 8-hour Full-Day Dubai sightseeing tour combining Old Dubai souks, Jumeirah coast, Palm Jumeirah, Dubai Marina, and Downtown Burj Khalifa at a maximum rate of 500 AED.',
+      duration: 'Full-Day (8 Hours)',
+      startingPriceAed: 500,
+      priceNote: 'Full-Day Tour (8 Hours): 500 AED',
+      availabilityNote: 'Confirmed after schedule check with Shahzaman Khokhar',
+      itinerary: [
+        'Morning hotel pickup in Dubai',
+        'Old Dubai Al Fahidi Heritage District, Dubai Creek & Spice/Gold Souks',
+        'Jumeirah Beachfront (Burj Al Arab) & Palm Jumeirah Atlantis photo stop',
+        'Dubai Marina promenade walk & Museum of the Future photo stop',
+        'Downtown Dubai, Burj Khalifa & Dubai Fountain evening drop-off or return',
+      ],
+      pickupInfo: 'Complimentary pickup & drop-off from your Dubai hotel, residence, or cruise port.',
+      included: [
+        'English-speaking Tour Guide (Usama or Abdul Qadir)',
+        'Program coordination by Shahzaman Khokhar',
+        'Full-Day (8 Hours) complete Dubai coverage at 500 AED max',
+        'Bottled mineral water during the tour',
+      ],
+      excluded: [
+        'Attraction observation deck tickets unless requested',
+        'Lunch, personal shopping, and gratuities',
+      ],
+      bookingOptions: ['Full-Day Tour (8 Hours) – 500 AED'],
+      featured: true,
+      sortOrder: 2,
+    },
+    {
       id: 'tour-dubai-city',
       slug: 'dubai-city-tour',
       title: 'Dubai City Tour',
@@ -333,10 +402,10 @@ export function createInitialStore(): DataStore {
       imageUrl: IMG.hero,
       galleryImages: [...REAL_TOUR_HD_PHOTOS],
       description:
-        'A balanced introduction to modern and historic Dubai, connecting Downtown landmarks, coastal viewpoints, and traditional creek neighborhoods with flexible Half-Day or Full-Day scheduling.',
+        'A balanced introduction to modern and historic Dubai, connecting Downtown landmarks, coastal viewpoints, and traditional creek neighborhoods with Half-Day (250 AED) or Full-Day (500 AED) scheduling.',
       duration: 'Half-Day (4 Hours) / Full-Day (8 Hours)',
-      startingPriceAed: 350,
-      priceNote: 'Half-Day: 350 AED · Full-Day: 600 AED',
+      startingPriceAed: 250,
+      priceNote: 'Half-Day: 250 AED · Full-Day: 500 AED',
       availabilityNote: 'Confirmed after schedule check with Shahzaman Khokhar',
       itinerary: [
         'Hotel or residence pickup in Dubai',
@@ -349,7 +418,7 @@ export function createInitialStore(): DataStore {
       included: [
         'English-speaking Tour Guide (Usama or Abdul Qadir)',
         'Program coordination by Shahzaman Khokhar',
-        'Flexible Half-Day (4h) or Full-Day (8h) pacing & landmark photo stops',
+        'Flexible Half-Day (4h – 250 AED) or Full-Day (8h – 500 AED) pacing',
         'Bottled mineral water during the tour',
       ],
       excluded: [
@@ -357,12 +426,12 @@ export function createInitialStore(): DataStore {
         'Meals, personal shopping, and gratuities',
       ],
       bookingOptions: [
-        'Half-Day Tour (4 Hours) – 350 AED',
-        'Full-Day Tour (8 Hours) – 600 AED',
+        'Half-Day Tour (4 Hours) – 250 AED',
+        'Full-Day Tour (8 Hours) – 500 AED',
         'WhatsApp Custom Quote',
       ],
       featured: true,
-      sortOrder: 1,
+      sortOrder: 3,
     },
     {
       id: 'tour-desert-safari',
@@ -449,8 +518,8 @@ export function createInitialStore(): DataStore {
       description:
         'A full-day private excursion from Dubai to the UAE capital, featuring Sheikh Zayed Grand Mosque, the Corniche waterfront, and cultural landmarks on Saadiyat and Yas Islands.',
       duration: 'Full-Day (8 – 9 Hours)',
-      startingPriceAed: 750,
-      priceNote: 'Full-Day Private Tour: 750 AED',
+      startingPriceAed: 500,
+      priceNote: 'Full-Day Private Tour: 500 AED',
       availabilityNote: 'Confirmed after schedule check with Shahzaman Khokhar',
       itinerary: [
         'Morning departure from Dubai via Sheikh Zayed Road',
@@ -469,9 +538,9 @@ export function createInitialStore(): DataStore {
         'Paid museum/palace entrance tickets unless requested in package',
         'Lunch & personal expenses',
       ],
-      bookingOptions: ['Full-Day Private Trip – 750 AED', 'Custom Cultural Stopovers'],
+      bookingOptions: ['Full-Day Private Trip (8 Hours) – 500 AED', 'Custom Cultural Stopovers'],
       featured: true,
-      sortOrder: 4,
+      sortOrder: 6,
     },
     {
       id: 'tour-burj-khalifa',
@@ -553,8 +622,8 @@ export function createInitialStore(): DataStore {
       description:
         'Explore Dubai’s iconic palm-shaped island across The Pointe boardwalk, Palm Monorail views, and Atlantis The Palm coastal vistas.',
       duration: 'Half-Day (4 Hours) / Full-Day West Coast (8 Hours)',
-      startingPriceAed: 300,
-      priceNote: 'Half-Day: 300 AED · Full-Day West Coast: 520 AED',
+      startingPriceAed: 250,
+      priceNote: 'Half-Day: 250 AED · Full-Day West Coast: 500 AED',
       availabilityNote: 'Confirmed after schedule check with Shahzaman Khokhar',
       itinerary: [
         'Palm Jumeirah trunk drive & West Beach boardwalk',
@@ -572,11 +641,11 @@ export function createInitialStore(): DataStore {
         'Meals and personal purchases',
       ],
       bookingOptions: [
-        'Half-Day Palm Loop (4 Hours) – 300 AED',
-        'Full-Day Palm & Marina (8 Hours) – 520 AED',
+        'Half-Day Palm Loop (4 Hours) – 250 AED',
+        'Full-Day Palm & Marina (8 Hours) – 500 AED',
       ],
       featured: false,
-      sortOrder: 7,
+      sortOrder: 9,
     },
     {
       id: 'tour-old-dubai',
@@ -617,7 +686,7 @@ export function createInitialStore(): DataStore {
         'Full-Day Old & New Dubai (8 Hours) – 420 AED',
       ],
       featured: true,
-      sortOrder: 8,
+      sortOrder: 10,
     },
     {
       id: 'tour-shopping',
@@ -628,8 +697,8 @@ export function createInitialStore(): DataStore {
       description:
         'Tailored shopping accompaniment covering luxury flagship boutiques at The Dubai Mall, Mall of the Emirates, Souk Madinat, and traditional Gold & Textile markets.',
       duration: 'Half-Day (4 Hours) / Full-Day (8 Hours)',
-      startingPriceAed: 300,
-      priceNote: 'Half-Day: 300 AED · Full-Day: 550 AED',
+      startingPriceAed: 250,
+      priceNote: 'Half-Day: 250 AED · Full-Day: 500 AED',
       availabilityNote: 'Confirmed after schedule check with Shahzaman Khokhar',
       itinerary: [
         'Personalized briefing based on your shopping wishlist',
@@ -644,11 +713,11 @@ export function createInitialStore(): DataStore {
       ],
       excluded: ['Personal shopping purchases & meals'],
       bookingOptions: [
-        'Half-Day Shopping (4 Hours) – 300 AED',
-        'Full-Day Malls & Souks (8 Hours) – 550 AED',
+        'Half-Day Shopping (4 Hours) – 250 AED',
+        'Full-Day Malls & Souks (8 Hours) – 500 AED',
       ],
       featured: false,
-      sortOrder: 9,
+      sortOrder: 11,
     },
     {
       id: 'tour-private-sightseeing',
@@ -660,8 +729,8 @@ export function createInitialStore(): DataStore {
       description:
         'Exclusive sightseeing exclusively for your family, couple, or small group — combining architectural highlights, hidden neighborhoods, and scenic breaks without rushing.',
       duration: 'Half-Day (4 Hours) / Full-Day (8 Hours)',
-      startingPriceAed: 400,
-      priceNote: 'Half-Day: 400 AED · Full-Day: 700 AED',
+      startingPriceAed: 250,
+      priceNote: 'Half-Day: 250 AED · Full-Day: 500 AED',
       availabilityNote: 'Confirmed after schedule check with Shahzaman Khokhar',
       itinerary: [
         'Private morning pickup at your preferred hour',
@@ -678,11 +747,11 @@ export function createInitialStore(): DataStore {
       ],
       excluded: ['Optional paid attraction tickets & dining'],
       bookingOptions: [
-        'Half-Day Private (4 Hours) – 400 AED',
-        'Full-Day Private (8 Hours) – 700 AED',
+        'Half-Day Private (4 Hours) – 250 AED',
+        'Full-Day Private (8 Hours) – 500 AED',
       ],
       featured: false,
-      sortOrder: 10,
+      sortOrder: 12,
     },
     {
       id: 'tour-custom-private',
@@ -693,8 +762,8 @@ export function createInitialStore(): DataStore {
       description:
         'Build your exact Dubai or UAE itinerary from scratch — ideal for transit layovers, multi-day family visits, photography trips, or bespoke milestone celebrations.',
       duration: 'Half-Day (4 Hours) / Full-Day (8 Hours)',
-      startingPriceAed: 350,
-      priceNote: 'Half-Day: 350 AED · Full-Day: 650 AED',
+      startingPriceAed: 250,
+      priceNote: 'Half-Day: 250 AED · Full-Day: 500 AED',
       availabilityNote: 'Confirmed after schedule check with Shahzaman Khokhar',
       itinerary: [
         'Pre-tour WhatsApp or email consultation with Shahzaman Khokhar',
@@ -708,11 +777,11 @@ export function createInitialStore(): DataStore {
       ],
       excluded: ['Third-party tickets, dining, or specialty rentals unless quoted'],
       bookingOptions: [
-        'Half-Day Custom Tour (4 Hours) – 350 AED',
-        'Full-Day Custom Tour (8 Hours) – 650 AED',
+        'Half-Day Custom Tour (4 Hours) – 250 AED',
+        'Full-Day Custom Tour (8 Hours) – 500 AED',
       ],
       featured: false,
-      sortOrder: 11,
+      sortOrder: 13,
     },
     {
       id: 'transfer-airport-arrival-old-dubai',

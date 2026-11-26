@@ -52,6 +52,11 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({ reviews, tours }
           photoDataUrl: photoDataUrl || undefined,
         }),
       });
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        setError('Reviews require an active connection to submit.');
+        return;
+      }
       const data = await res.json();
       if (!res.ok) {
         setError(data.error || 'Could not submit review.');
@@ -64,7 +69,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({ reviews, tours }
         setPhotoDataUrl('');
       }
     } catch {
-      setError('Network error while submitting review.');
+      setError('Unable to reach server while submitting review.');
     } finally {
       setSubmitting(false);
     }

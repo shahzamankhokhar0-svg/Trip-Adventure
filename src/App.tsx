@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ArrowRight,
   ArrowUpRight,
@@ -6,7 +6,6 @@ import {
   Compass,
   Globe,
   Home,
-  Loader2,
   Mail,
   Map as MapIcon,
   MapPin,
@@ -14,7 +13,6 @@ import {
   MessageCircle,
   Phone,
   Search,
-  Shield,
   Star,
   Ticket,
   X,
@@ -30,72 +28,16 @@ import { OfflineIndicator } from './components/OfflineIndicator.tsx';
 import { FaqSection } from './components/FaqSection.tsx';
 import { FooterNewsletter } from './components/FooterNewsletter.tsx';
 import { STATIC_BOOTSTRAP_DATA } from './data/staticCatalog.ts';
-
-const TourDetailModal = lazy(() =>
-  import('./components/TourDetailModal.tsx').then((m) => ({ default: m.TourDetailModal }))
-);
-const BookingSection = lazy(() =>
-  import('./components/BookingSection.tsx').then((m) => ({ default: m.BookingSection }))
-);
-const AttractionsSection = lazy(() =>
-  import('./components/AttractionsSection.tsx').then((m) => ({ default: m.AttractionsSection }))
-);
-const GallerySection = lazy(() =>
-  import('./components/GallerySection.tsx').then((m) => ({ default: m.GallerySection }))
-);
-const ReviewsSection = lazy(() =>
-  import('./components/ReviewsSection.tsx').then((m) => ({ default: m.ReviewsSection }))
-);
-const AboutSection = lazy(() =>
-  import('./components/AboutSection.tsx').then((m) => ({ default: m.AboutSection }))
-);
-const ContactSection = lazy(() =>
-  import('./components/ContactSection.tsx').then((m) => ({ default: m.ContactSection }))
-);
-const AdminDashboard = lazy(() =>
-  import('./components/AdminDashboard.tsx').then((m) => ({ default: m.AdminDashboard }))
-);
-const AchievementsTripsSection = lazy(() =>
-  import('./components/AchievementsTripsSection.tsx').then((m) => ({
-    default: m.AchievementsTripsSection,
-  }))
-);
-const TeamSpotlightSection = lazy(() =>
-  import('./components/TeamSpotlightSection.tsx').then((m) => ({
-    default: m.TeamSpotlightSection,
-  }))
-);
-
-const BOOTSTRAP_CACHE_KEY = 'ta_fast_bootstrap_v1';
-
-function readCachedBootstrap(): PublicBootstrapData | null {
-  try {
-    const raw = window.localStorage.getItem(BOOTSTRAP_CACHE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as PublicBootstrapData;
-    if (parsed && Array.isArray(parsed.tours) && parsed.settings) {
-      if (Array.isArray(parsed.gallery)) {
-        parsed.gallery = parsed.gallery.filter(
-          (item) =>
-            item.id !== 'gal-usama-marina-night' &&
-            !item.id.startsWith('gal-organizer')
-        );
-      }
-      return parsed;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-function writeCachedBootstrap(payload: PublicBootstrapData): void {
-  try {
-    window.localStorage.setItem(BOOTSTRAP_CACHE_KEY, JSON.stringify(payload));
-  } catch {
-    // Ignore storage quota errors
-  }
-}
+import { TourDetailModal } from './components/TourDetailModal.tsx';
+import { BookingSection } from './components/BookingSection.tsx';
+import { AttractionsSection } from './components/AttractionsSection.tsx';
+import { GallerySection } from './components/GallerySection.tsx';
+import { ReviewsSection } from './components/ReviewsSection.tsx';
+import { AboutSection } from './components/AboutSection.tsx';
+import { ContactSection } from './components/ContactSection.tsx';
+import { AdminDashboard } from './components/AdminDashboard.tsx';
+import { AchievementsTripsSection } from './components/AchievementsTripsSection.tsx';
+import { TeamSpotlightSection } from './components/TeamSpotlightSection.tsx';
 
 type PageRoute =
   | 'home'
@@ -162,8 +104,8 @@ const DEFAULT_PAGE_SEO: Record<PageRoute, { title: string; description: string }
       'Request Dubai city tours, private 4x4 desert safaris, or DXB airport transfers online and track your reservation status anytime.',
   },
   admin: {
-    title: 'Admin Console | TRIP ADVENTURE',
-    description: 'Authorized administrator dashboard for managing TRIP ADVENTURE content, tours, bookings, and SEO.',
+    title: 'Admin Panel | TRIP ADVENTURE',
+    description: 'Authorized administrator panel for managing TRIP ADVENTURE content, tours, bookings, and SEO.',
   },
 };
 
@@ -206,9 +148,7 @@ export default function App() {
   const [route, setRoute] = useState<PageRoute>(() =>
     parseRouteFromPath(window.location.pathname)
   );
-  const [data, setData] = useState<PublicBootstrapData>(
-    () => readCachedBootstrap() || STATIC_BOOTSTRAP_DATA
-  );
+  const data: PublicBootstrapData = STATIC_BOOTSTRAP_DATA;
   const [mapsQuotaExceeded, setMapsQuotaExceeded] = useState(false);
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -216,43 +156,35 @@ export default function App() {
     const pathname = window.location.pathname;
     if (pathname.startsWith('/tours/')) {
       const slug = pathname.replace('/tours/', '').replace(/\/+$/, '');
-      const seed = readCachedBootstrap() || STATIC_BOOTSTRAP_DATA;
-      return seed.tours.find((tourItem) => tourItem.slug === slug) || null;
+      return STATIC_BOOTSTRAP_DATA.tours.find((tourItem) => tourItem.slug === slug) || null;
     }
     return null;
   });
   const [preselectedTourId, setPreselectedTourId] = useState<string | null>(null);
+  const [preselectedBookingOption, setPreselectedBookingOption] = useState<string | null>(null);
   const [bookingInitialTab, setBookingInitialTab] = useState<'book' | 'status'>('book');
+  const [bookingRequestNonce, setBookingRequestNonce] = useState(0);
   const [tourCategoryFilter, setTourCategoryFilter] = useState('All');
   const [tourSearchQuery, setTourSearchQuery] = useState('');
 
-  const fetchBootstrap = useCallback(async (forceFresh = false) => {
-    try {
-      const res = await fetch('/api/fast/bootstrap', forceFresh ? { cache: 'reload' } : undefined);
-      if (!res.ok) return;
-      const contentType = res.headers.get('content-type') || '';
-      if (!contentType.includes('application/json')) return;
-      const payload = (await res.json()) as PublicBootstrapData;
-      if (payload && Array.isArray(payload.tours) && payload.tours.length > 0 && payload.settings) {
-        setData(payload);
-        writeCachedBootstrap(payload);
-
-        // Support deep linking /tours/:slug
-        const pathname = window.location.pathname;
-        if (pathname.startsWith('/tours/')) {
-          const slug = pathname.replace('/tours/', '').replace(/\/+$/, '');
-          const match = payload.tours.find((tourItem) => tourItem.slug === slug);
-          if (match) setSelectedTourModal(match);
-        }
+  useEffect(() => {
+    const { protocol, hostname, host, pathname, search, hash } = window.location;
+    const isLocalHost =
+      hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0';
+    if (protocol === 'http:' && !isLocalHost) {
+      window.location.replace(`https://${host}${pathname}${search}${hash}`);
+      return;
+    }
+    if (protocol === 'https:') {
+      let cspTag = document.querySelector<HTMLMetaElement>('meta[http-equiv="Content-Security-Policy"]');
+      if (!cspTag) {
+        cspTag = document.createElement('meta');
+        cspTag.setAttribute('http-equiv', 'Content-Security-Policy');
+        cspTag.setAttribute('content', 'upgrade-insecure-requests');
+        document.head.appendChild(cspTag);
       }
-    } catch {
-      // Static hardcoded catalog remains active offline / without backend APIs
     }
   }, []);
-
-  useEffect(() => {
-    fetchBootstrap(false);
-  }, [fetchBootstrap]);
 
   useEffect(() => {
     const onQuota = () => setMapsQuotaExceeded(true);
@@ -270,23 +202,30 @@ export default function App() {
 
   useEffect(() => {
     const seoEntry =
-      route !== 'admin' ? data?.cms?.seoPages?.[route] || DEFAULT_PAGE_SEO[route] : DEFAULT_PAGE_SEO.admin;
+      route !== 'admin' ? data.cms?.seoPages?.[route] || DEFAULT_PAGE_SEO[route] : DEFAULT_PAGE_SEO.admin;
     const baseTitle = seoEntry.title || DEFAULT_PAGE_SEO[route].title;
     const baseDescription = seoEntry.description || DEFAULT_PAGE_SEO[route].description;
-    const brandName = data?.settings?.brandName || 'TRIP ADVENTURE';
+    const brandName = data.settings.brandName || 'TRIP ADVENTURE';
     const title = selectedTourModal
       ? `${selectedTourModal.title} | ${brandName}`
       : baseTitle;
     const description = selectedTourModal
       ? selectedTourModal.description.slice(0, 160)
       : baseDescription;
-    const rawImage = selectedTourModal?.imageUrl || data?.cms?.heroBannerUrl || '';
+    const isLocalHost =
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1' ||
+      window.location.hostname === '0.0.0.0';
+    const safeOrigin = isLocalHost
+      ? window.location.origin
+      : window.location.origin.replace(/^http:\/\//i, 'https://');
+    const rawImage = selectedTourModal?.imageUrl || data.cms?.heroBannerUrl || '';
     const ogImage = rawImage
       ? rawImage.startsWith('http')
-        ? rawImage
-        : `${window.location.origin}${rawImage}`
+        ? rawImage.replace(/^http:\/\//i, 'https://')
+        : `${safeOrigin}${rawImage}`
       : '';
-    const canonicalUrl = `${window.location.origin}${window.location.pathname}`;
+    const canonicalUrl = `${safeOrigin}${window.location.pathname}`;
 
     document.title = title;
     upsertMetaTag('name', 'description', description);
@@ -302,7 +241,7 @@ export default function App() {
     upsertMetaTag('name', 'twitter:title', title);
     upsertMetaTag('name', 'twitter:description', description);
     upsertCanonicalLink(canonicalUrl);
-  }, [route, data?.cms?.seoPages, data?.cms?.heroBannerUrl, data?.settings?.brandName, selectedTourModal]);
+  }, [route, data.cms?.seoPages, data.cms?.heroBannerUrl, data.settings.brandName, selectedTourModal]);
 
   const navigateTo = useCallback((nextRoute: PageRoute, customPath?: string) => {
     setRoute(nextRoute);
@@ -315,9 +254,11 @@ export default function App() {
   }, []);
 
   const handleBookTour = useCallback(
-    (tour: TourPackage) => {
+    (tour: TourPackage, selectedOption?: string) => {
       setPreselectedTourId(tour.id);
+      setPreselectedBookingOption(selectedOption || null);
       setBookingInitialTab('book');
+      setBookingRequestNonce((n) => n + 1);
       navigateTo('book');
     },
     [navigateTo]
@@ -330,6 +271,7 @@ export default function App() {
 
   const openBookVisitPage = useCallback(() => {
     setBookingInitialTab('book');
+    setBookingRequestNonce((n) => n + 1);
     navigateTo('book');
   }, [navigateTo]);
 
@@ -521,7 +463,7 @@ export default function App() {
 
             <button
               type="button"
-              onClick={() => navigateTo('book')}
+              onClick={openBookVisitPage}
               className="inline-flex items-center gap-1.5 rounded-lg bg-[#C59B38] px-3.5 py-2 text-xs font-semibold text-[#0B0B0D] transition-colors hover:bg-[#D4AF37] whitespace-nowrap shrink-0 min-h-[38px]"
             >
               {t.nav.bookTour}
@@ -623,7 +565,7 @@ export default function App() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => navigateTo('book')}
+                      onClick={openBookVisitPage}
                       className="inline-flex items-center gap-2 rounded-lg border border-white/30 bg-white/10 px-6 py-3.5 text-sm font-semibold text-white backdrop-blur-sm transition-colors hover:border-[#C59B38] hover:bg-white/15 min-h-[46px]"
                     >
                       {language === 'en' && cms?.heroBookBtnText
@@ -1024,12 +966,10 @@ export default function App() {
             </section>
 
             {/* PROGRAM ORGANIZER & TOUR GUIDES (SEPARATE FROM PHOTO GALLERY) */}
-            <Suspense fallback={null}>
-              <TeamSpotlightSection
-                settings={settings}
-                onMeetTeamClick={() => navigateTo('about')}
-              />
-            </Suspense>
+            <TeamSpotlightSection
+              settings={settings}
+              onMeetTeamClick={() => navigateTo('about')}
+            />
 
             {/* PHOTO GALLERY PREVIEW */}
             <section className="border-t border-neutral-200 bg-white py-16">
@@ -1098,12 +1038,10 @@ export default function App() {
             </section>
 
             {/* OUR ACHIEVEMENTS & REAL TRIPS SHOWCASE */}
-            <Suspense fallback={null}>
-              <AchievementsTripsSection
-                compact
-                onViewAllAbout={() => navigateTo('about')}
-              />
-            </Suspense>
+            <AchievementsTripsSection
+              compact
+              onViewAllAbout={() => navigateTo('about')}
+            />
 
             {/* FREQUENTLY ASKED QUESTIONS */}
             <FaqSection cms={cms} />
@@ -1161,13 +1099,7 @@ export default function App() {
         )}
 
         {route !== 'home' && (
-          <Suspense
-            fallback={
-              <div className="flex min-h-[50vh] items-center justify-center">
-                <Loader2 className="h-7 w-7 animate-spin text-[#C59B38]" />
-              </div>
-            }
-          >
+          <>
             {route === 'about' && (
               <AboutSection settings={settings} cms={cms} onBookClick={() => navigateTo('book')} />
             )}
@@ -1343,7 +1275,9 @@ export default function App() {
                 tours={tours}
                 settings={settings}
                 preselectedTourId={preselectedTourId}
+                preselectedBookingOption={preselectedBookingOption}
                 initialMode={bookingInitialTab}
+                bookingRequestNonce={bookingRequestNonce}
               />
             )}
 
@@ -1358,11 +1292,11 @@ export default function App() {
 
             {route === 'admin' && (
               <AdminDashboard
-                onDataUpdated={() => fetchBootstrap(true)}
+                onDataUpdated={() => {}}
                 onExitAdmin={() => navigateTo('home')}
               />
             )}
-          </Suspense>
+          </>
         )}
       </main>
 
@@ -1412,14 +1346,22 @@ export default function App() {
 
             <div className="md:col-span-6 lg:col-span-3 space-y-2.5 text-xs">
               <p className="font-semibold text-white">Dubai Contact Desk</p>
-              <p className="flex items-center gap-2 text-neutral-400">
+              <a
+                href={buildWhatsAppUrl(settings.whatsappNumber || '+971542218616')}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 text-neutral-300 transition-colors hover:text-[#F5E4B8]"
+              >
                 <Phone className="h-3.5 w-3.5 text-[#C59B38]" />
-                <span className="font-mono-num">{settings.whatsappNumber}</span>
-              </p>
-              <p className="flex items-center gap-2 text-neutral-400">
+                <span className="font-mono-num">{settings.whatsappNumber || '+971542218616'}</span>
+              </a>
+              <a
+                href={`mailto:${settings.email || 'tripadventure63@gmail.com'}`}
+                className="flex items-center gap-2 text-neutral-300 transition-colors hover:text-[#F5E4B8]"
+              >
                 <Mail className="h-3.5 w-3.5 text-[#C59B38]" />
-                <span>{settings.email}</span>
-              </p>
+                <span>{settings.email || 'tripadventure63@gmail.com'}</span>
+              </a>
               <p className="flex items-center gap-2 text-neutral-400">
                 <MapPin className="h-3.5 w-3.5 text-[#C59B38]" />
                 <span>{settings.address}</span>
@@ -1436,30 +1378,22 @@ export default function App() {
               © {new Date().getFullYear()} {settings.brandName}.{' '}
               {cms?.footerTagline || 'Personal Tour Guide Services in Dubai, UAE.'}
             </p>
-            <button
-              type="button"
-              onClick={() => navigateTo('admin')}
-              className="inline-flex items-center gap-1.5 text-neutral-400 hover:text-[#C59B38]"
-            >
-              <Shield className="h-3.5 w-3.5" />
-              Admin Dashboard
-            </button>
+            <p className="text-neutral-500">Dubai, United Arab Emirates</p>
           </div>
         </div>
       </footer>
 
-      {/* FLOATING WHATSAPP ICON ON EVERY PUBLIC PAGE */}
-      {route !== 'admin' && (
-        <a
-          href={buildWhatsAppUrl(settings.whatsappNumber)}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="Chat with TRIP ADVENTURE on WhatsApp"
-          className="fixed bottom-20 right-4 z-40 flex h-13 w-13 items-center justify-center rounded-full bg-[#15803D] text-white shadow-xl transition-transform hover:scale-105 hover:bg-[#166534] md:bottom-6 md:right-6"
-        >
-          <MessageCircle className="h-6 w-6" />
-        </a>
-      )}
+      {/* FLOATING WHATSAPP BUTTON ON ALL PAGES */}
+      <a
+        href={buildWhatsAppUrl(settings.whatsappNumber || '+971542218616')}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Chat with TRIP ADVENTURE on WhatsApp (+971542218616)"
+        title="Chat on WhatsApp (+971542218616)"
+        className="fixed bottom-20 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-[#15803D] text-white shadow-xl transition-transform hover:scale-105 hover:bg-[#166534] md:bottom-6 md:right-6"
+      >
+        <MessageCircle className="h-6 w-6" />
+      </a>
 
       {/* MOBILE PWA BOTTOM TAB NAVIGATION BAR (< md) */}
       {route !== 'admin' && (
@@ -1495,14 +1429,12 @@ export default function App() {
 
       {/* TOUR DETAIL MODAL */}
       {selectedTourModal && (
-        <Suspense fallback={null}>
-          <TourDetailModal
-            tour={selectedTourModal}
-            whatsappNumber={settings.whatsappNumber}
-            onClose={() => setSelectedTourModal(null)}
-            onBookOnline={handleBookTour}
-          />
-        </Suspense>
+        <TourDetailModal
+          tour={selectedTourModal}
+          whatsappNumber={settings.whatsappNumber}
+          onClose={() => setSelectedTourModal(null)}
+          onBookOnline={handleBookTour}
+        />
       )}
 
       {/* OFFLINE PWA BANNER */}

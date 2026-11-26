@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  AlertCircle,
   BarChart3,
   Bell,
   Calendar,
@@ -84,14 +83,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 }) => {
   const [authChecked, setAuthChecked] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
-  const [setupRequired, setSetupRequired] = useState(false);
   const [adminUsername, setAdminUsername] = useState('');
-
-  // Auth forms
-  const [loginUser, setLoginUser] = useState('');
-  const [loginPass, setLoginPass] = useState('');
-  const [authError, setAuthError] = useState<string | null>(null);
-  const [authLoading, setAuthLoading] = useState(false);
 
   // Dashboard data
   const [activeTab, setActiveTab] = useState<AdminTab>('bookings');
@@ -199,15 +191,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const checkAuthStatus = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/auth-status');
+      const contentType = res.headers.get('content-type') || '';
+      if (!res.ok || !contentType.includes('application/json')) {
+        setAuthenticated(false);
+        return;
+      }
       const data = await res.json();
       setAuthenticated(Boolean(data.authenticated));
-      setSetupRequired(Boolean(data.setupRequired));
       if (data.username) setAdminUsername(data.username);
       if (data.authenticated) {
         await fetchDashboard();
       }
     } catch {
-      setAuthError('Unable to verify session.');
+      setAuthenticated(false);
     } finally {
       setAuthChecked(true);
     }
@@ -282,34 +278,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       source.close();
     };
   }, [authenticated]);
-
-  const handleAuthSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setAuthError(null);
-    setAuthLoading(true);
-    try {
-      const endpoint = setupRequired ? '/api/admin/setup' : '/api/admin/login';
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: loginUser, password: loginPass }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setAuthError(data.error || 'Authentication failed.');
-      } else {
-        setAuthenticated(true);
-        setSetupRequired(false);
-        setAdminUsername(data.username);
-        setLoginPass('');
-        await fetchDashboard();
-      }
-    } catch {
-      setAuthError('Network error during authentication.');
-    } finally {
-      setAuthLoading(false);
-    }
-  };
 
   const handleLogout = async () => {
     await fetch('/api/admin/logout', { method: 'POST' });
@@ -742,71 +710,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   if (!authenticated) {
     return (
       <div className="mx-auto flex min-h-[70vh] max-w-md items-center px-4 py-12">
-        <div className="w-full rounded-2xl border border-neutral-200 bg-white p-8">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#0B0B0D] text-[#C59B38]">
+        <div className="w-full rounded-2xl border border-neutral-200 bg-white p-8 text-center">
+          <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-[#0B0B0D] text-[#C59B38]">
             <Lock className="h-5 w-5" />
           </div>
-          <h2 className="mt-4 font-display text-3xl font-semibold text-[#111114]">
-            {setupRequired ? 'Initialize Admin Account' : 'Admin Dashboard Sign In'}
+          <p className="mt-4 text-xs font-semibold text-[#8B6816]">TRIP ADVENTURE</p>
+          <h2 className="mt-1 font-display text-3xl font-semibold text-[#111114]">
+            Admin Panel
           </h2>
-          <p className="mt-1.5 text-sm text-neutral-600">
-            {setupRequired
-              ? 'Create your secure administrator credentials to manage bookings, tours, pricing, and reviews.'
-              : 'Sign in with your administrator credentials to manage TRIP ADVENTURE.'}
+          <p className="mt-2 text-sm text-neutral-600">
+            Private Page · This Admin Panel is not accessible on the public website.
           </p>
-
-          <form onSubmit={handleAuthSubmit} className="mt-6 space-y-4">
-            {authError && (
-              <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs text-red-800">
-                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                <span>{authError}</span>
-              </div>
-            )}
-
-            <div>
-              <label htmlFor="adm-user" className="block text-xs font-semibold text-neutral-700">
-                Username
-              </label>
-              <input
-                id="adm-user"
-                type="text"
-                required
-                placeholder="Enter administrator username"
-                value={loginUser}
-                onChange={(e) => setLoginUser(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-neutral-300 px-3.5 py-2.5 text-sm text-[#111114] focus:border-[#C59B38] focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="adm-pass" className="block text-xs font-semibold text-neutral-700">
-                Password {setupRequired && '(min 8 characters)'}
-              </label>
-              <input
-                id="adm-pass"
-                type="password"
-                required
-                minLength={setupRequired ? 8 : 1}
-                value={loginPass}
-                onChange={(e) => setLoginPass(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-neutral-300 px-3.5 py-2.5 text-sm text-[#111114] focus:border-[#C59B38] focus:outline-none"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={authLoading}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#0B0B0D] px-5 py-3 text-sm font-semibold text-white hover:bg-[#1F1F25] disabled:opacity-60"
-            >
-              {authLoading && <Loader2 className="h-4 w-4 animate-spin text-[#C59B38]" />}
-              {setupRequired ? 'Create Admin Account' : 'Sign In'}
-            </button>
-          </form>
-
           <button
             type="button"
             onClick={onExitAdmin}
-            className="mt-5 w-full text-center text-xs font-medium text-neutral-500 hover:text-[#111114]"
+            className="mt-6 inline-flex w-full items-center justify-center rounded-lg bg-[#0B0B0D] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#1F1F25]"
           >
             Return to Public Website
           </button>
@@ -827,7 +745,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             Signed in as {adminUsername}
           </p>
           <h1 className="mt-1 font-display text-3xl font-semibold text-[#111114]">
-            TRIP ADVENTURE Admin Console
+            TRIP ADVENTURE Admin Panel
           </h1>
         </div>
         <div className="flex items-center gap-2.5">

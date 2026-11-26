@@ -21,7 +21,7 @@ interface TourDetailModalProps {
   tour: TourPackage | null;
   whatsappNumber: string;
   onClose: () => void;
-  onBookOnline: (tour: TourPackage) => void;
+  onBookOnline: (tour: TourPackage, selectedOption?: string) => void;
 }
 
 function getFocalClass(src: string): string {
@@ -38,6 +38,7 @@ export const TourDetailModal: React.FC<TourDetailModalProps> = ({
   const { currency, formatText } = usePreferences();
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
   const [fullHdOpen, setFullHdOpen] = useState(false);
+  const [selectedOption, setSelectedOption] = useState<string>('');
 
   const photos = useMemo(() => {
     if (!tour) return [];
@@ -55,7 +56,8 @@ export const TourDetailModal: React.FC<TourDetailModalProps> = ({
   useEffect(() => {
     setActivePhotoIndex(0);
     setFullHdOpen(false);
-  }, [tour?.id]);
+    setSelectedOption(tour?.bookingOptions?.[0] || '');
+  }, [tour?.id, tour?.bookingOptions]);
 
   if (!tour) return null;
 
@@ -318,21 +320,39 @@ export const TourDetailModal: React.FC<TourDetailModalProps> = ({
 
           {tour.bookingOptions.length > 0 && (
             <div className="border-t border-neutral-200 pt-6">
-              <p className="text-xs font-semibold text-neutral-500">Available Booking Options</p>
-              <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-[#111114]">
-                {tour.bookingOptions.map((opt, idx) => (
-                  <React.Fragment key={opt}>
-                    {idx > 0 && <span aria-hidden="true" className="text-neutral-400">·</span>}
-                    <span className="font-medium">{formatText(opt)}</span>
-                  </React.Fragment>
-                ))}
+              <p className="text-xs font-semibold text-[#8B6816]">
+                Select Half-Day / Full-Day Tour Package &amp; Price
+              </p>
+              <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
+                {tour.bookingOptions.map((opt) => {
+                  const active = selectedOption === opt;
+                  return (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => setSelectedOption(opt)}
+                      className={`flex items-center justify-between gap-2 rounded-xl border px-4 py-3 text-left text-xs font-semibold transition-colors ${
+                        active
+                          ? 'border-[#C59B38] bg-[#C59B38]/10 text-[#111114] ring-1 ring-[#C59B38]/40'
+                          : 'border-neutral-200 bg-[#FAF9F6] text-neutral-700 hover:border-[#C59B38]/60'
+                      }`}
+                    >
+                      <span>{formatText(opt)}</span>
+                      {active && <Check className="h-4 w-4 shrink-0 text-[#8B6816]" />}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
 
           <div className="flex flex-wrap items-center justify-end gap-3 border-t border-neutral-200 pt-6">
             <a
-              href={buildWhatsAppUrl(whatsappNumber, { tourTitle: tour.title })}
+              href={buildWhatsAppUrl(whatsappNumber, {
+                tourTitle: selectedOption
+                  ? `${tour.title} (${formatText(selectedOption)})`
+                  : tour.title,
+              })}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 rounded-lg border border-neutral-300 bg-white px-5 py-3 text-sm font-semibold text-[#111114] transition-colors hover:border-[#C59B38] hover:bg-[#FAF9F6]"
@@ -344,11 +364,11 @@ export const TourDetailModal: React.FC<TourDetailModalProps> = ({
               type="button"
               onClick={() => {
                 onClose();
-                onBookOnline(tour);
+                onBookOnline(tour, selectedOption || undefined);
               }}
               className="inline-flex items-center gap-2 rounded-lg bg-[#0B0B0D] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#1E1E24]"
             >
-              Request Online Booking
+              Book Now
             </button>
           </div>
         </div>

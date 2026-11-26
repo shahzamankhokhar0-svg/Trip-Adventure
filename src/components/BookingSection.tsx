@@ -5,8 +5,11 @@ import {
   CheckCircle2,
   Clock,
   Loader2,
+  Mail,
   MapPin,
   MessageCircle,
+  Minus,
+  Plus,
   RefreshCw,
   Search,
   Ticket,
@@ -20,7 +23,7 @@ import type {
   SiteSettings,
   TourPackage,
 } from '../types.ts';
-import { buildWhatsAppUrl } from '../lib/whatsapp.ts';
+import { buildBookingMailtoUrl, buildWhatsAppUrl } from '../lib/whatsapp.ts';
 import { usePreferences } from '../context/PreferencesContext.tsx';
 import { AvailabilityCalendar, formatDisplayDate } from './AvailabilityCalendar.tsx';
 
@@ -28,12 +31,15 @@ interface BookingSectionProps {
   tours: TourPackage[];
   settings: SiteSettings;
   preselectedTourId?: string | null;
+  preselectedBookingOption?: string | null;
+  bookingRequestNonce?: number;
   initialMode?: 'book' | 'status';
 }
 
 interface BookingReceipt {
   referenceCode: string;
   fullName: string;
+  whatsappNumber: string;
   email: string;
   tourTitle: string;
   travelDate: string;
@@ -112,10 +118,58 @@ function removeTicketPointer(referenceCode: string): SavedTicketPointer[] {
   return next;
 }
 
+const LOCAL_OFFLINE_TICKETS_KEY = 'ta_local_offline_bookings_v1';
+
+interface LocalOfflineTicket {
+  referenceCode: string;
+  fullName: string;
+  email: string;
+  tourTitle: string;
+  travelDate: string;
+  adults: number;
+  children: number;
+  pickupLocation: string;
+  requirements: string;
+  status: BookingStatus;
+  adminNotes: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+function readLocalOfflineTickets(): LocalOfflineTicket[] {
+  try {
+    const raw = window.localStorage.getItem(LOCAL_OFFLINE_TICKETS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeLocalOfflineTickets(list: LocalOfflineTicket[]): void {
+  try {
+    window.localStorage.setItem(LOCAL_OFFLINE_TICKETS_KEY, JSON.stringify(list.slice(0, 30)));
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+function generateLocalReferenceCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let suffix = '';
+  for (let i = 0; i < 6; i++) {
+    suffix += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return `TA-DXB-${suffix}`;
+}
+
 export const BookingSection: React.FC<BookingSectionProps> = ({
   tours,
   settings,
   preselectedTourId,
+  preselectedBookingOption,
+  bookingRequestNonce = 0,
   initialMode = 'book',
 }) => {
   const { formatAmount, formatText, t } = usePreferences();
@@ -126,6 +180,7 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
   const [whatsappNumber, setWhatsappNumber] = useState('');
   const [nationality, setNationality] = useState('');
   const [tourId, setTourId] = useState(preselectedTourId || tours[0]?.id || '');
+  const [selectedOption, setSelectedOption] = useState(preselectedBookingOption || '');
   const [travelDate, setTravelDate] = useState('');
   const [adults, setAdults] = useState(2);
   const [children, setChildren] = useState(0);
@@ -158,6 +213,14 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
     setSectionTab(initialMode);
   }, [initialMode]);
 
+  useEffect(() => {
+    if (bookingRequestNonce > 0) {
+      setReceipt(null);
+      setError(null);
+      setSectionTab('book');
+    }
+  }, [bookingRequestNonce]);
+
   const fetchAvailability = useCallback(async () => {
     setLoadingAvailability(true);
     try {
@@ -181,8 +244,14 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
     }
     setSyncingTickets(true);
     try {
+      const localList = readLocalOfflineTickets();
       const resolved = await Promise.all(
         pointers.map(async (ptr): Promise<SavedTicketEntry | null> => {
+          const localMatch = localList.find(
+            (item) =>
+              item.referenceCode.toUpperCase() === ptr.referenceCode.toUpperCase() &&
+              item.email.toLowerCase() === ptr.email.toLowerCase()
+          );
           try {
             const params = new URLSearchParams({
               ref: ptr.referenceCode,
@@ -191,12 +260,16 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
             const res = await fetch(`/api/bookings/lookup?${params.toString()}`, {
               cache: 'no-store',
             });
-            if (!res.ok) return null;
-            const data = await res.json();
-            if (!data.booking) return null;
-            return { ...data.booking, email: ptr.email };
+            const contentType = res.headers.get('content-type') || '';
+            if (res.ok && contentType.includes('application/json')) {
+              const data = await res.json();
+              if (data.booking) {
+                return { ...data.booking, email: ptr.email };
+              }
+            }
+            return localMatch ? { ...localMatch } : null;
           } catch {
-            return null;
+            return localMatch ? { ...localMatch } : null;
           }
         })
       );
@@ -222,6 +295,19 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
   const selectedTour = tours.find((t) => t.id === tourId) || tours[0];
   const todayStr = new Date().toISOString().split('T')[0];
 
+  useEffect(() => {
+    if (!selectedTour) {
+      setSelectedOption('');
+      return;
+    }
+    const opts = selectedTour.bookingOptions || [];
+    if (preselectedBookingOption && opts.includes(preselectedBookingOption)) {
+      setSelectedOption(preselectedBookingOption);
+      return;
+    }
+    setSelectedOption((prev) => (prev && opts.includes(prev) ? prev : opts[0] || ''));
+  }, [selectedTour, preselectedBookingOption]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -231,7 +317,48 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
       return;
     }
 
+    const safeAdults = Math.min(20, Math.max(1, Number(adults) || 1));
+    const safeChildren = Math.min(20, Math.max(0, Number(children) || 0));
+    const resolvedTourTitle =
+      selectedTour && selectedOption
+        ? `${selectedTour.title} — ${formatText(selectedOption)}`
+        : selectedTour?.title || 'Dubai Tour';
+
     setSubmitting(true);
+
+    const saveOfflineReceipt = () => {
+      const now = new Date().toISOString();
+      const created: BookingReceipt = {
+        referenceCode: generateLocalReferenceCode(),
+        fullName: fullName.trim(),
+        whatsappNumber: whatsappNumber.trim(),
+        email: email.trim().toLowerCase(),
+        tourTitle: resolvedTourTitle,
+        travelDate,
+        adults: safeAdults,
+        children: safeChildren,
+        pickupLocation: pickupLocation.trim(),
+        requirements: requirements.trim(),
+        status: 'pending',
+        createdAt: now,
+      };
+      const localList = readLocalOfflineTickets();
+      writeLocalOfflineTickets([
+        {
+          ...created,
+          adminNotes: '',
+          updatedAt: now,
+        },
+        ...localList,
+      ]);
+      setReceipt(created);
+      if (created.email) {
+        saveTicketPointer(created.referenceCode, created.email);
+        setLookupEmail(created.email);
+      }
+      setLookupRef(created.referenceCode);
+      void refreshSavedTickets();
+    };
 
     try {
       const res = await fetch('/api/bookings', {
@@ -243,13 +370,19 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
           whatsappNumber,
           nationality,
           tourId,
+          tourOption: selectedOption ? formatText(selectedOption) : '',
           travelDate,
-          adults: Number(adults),
-          children: Number(children),
+          adults: safeAdults,
+          children: safeChildren,
           pickupLocation,
           requirements,
         }),
       });
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        saveOfflineReceipt();
+        return;
+      }
       const data = await res.json();
       if (!res.ok) {
         setError(data.error || 'Could not submit booking request.');
@@ -257,15 +390,20 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
           await fetchAvailability();
         }
       } else {
-        const created: BookingReceipt = data.booking;
+        const created: BookingReceipt = {
+          ...data.booking,
+          whatsappNumber: whatsappNumber.trim(),
+        };
         setReceipt(created);
-        saveTicketPointer(created.referenceCode, created.email);
+        if (created.email) {
+          saveTicketPointer(created.referenceCode, created.email);
+          setLookupEmail(created.email);
+        }
         setLookupRef(created.referenceCode);
-        setLookupEmail(created.email);
         await Promise.all([fetchAvailability(), refreshSavedTickets()]);
       }
     } catch {
-      setError('Network error while submitting your booking request. Please try again.');
+      saveOfflineReceipt();
     } finally {
       setSubmitting(false);
     }
@@ -277,9 +415,24 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
     setLookupResult(null);
     setTicketActionMessage(null);
     setLookupLoading(true);
+    const refVal = lookupRef.trim().toUpperCase();
+    const emailVal = lookupEmail.trim().toLowerCase();
+    const checkLocalTicket = () => {
+      const localMatch = readLocalOfflineTickets().find(
+        (item) =>
+          item.referenceCode.toUpperCase() === refVal &&
+          item.email.toLowerCase() === emailVal
+      );
+      if (localMatch) {
+        setLookupResult({ ...localMatch });
+        saveTicketPointer(localMatch.referenceCode, emailVal);
+        void refreshSavedTickets();
+        return true;
+      }
+      return false;
+    };
+
     try {
-      const refVal = lookupRef.trim().toUpperCase();
-      const emailVal = lookupEmail.trim().toLowerCase();
       const params = new URLSearchParams({
         ref: refVal,
         email: emailVal,
@@ -287,9 +440,18 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
       const res = await fetch(`/api/bookings/lookup?${params.toString()}`, {
         cache: 'no-store',
       });
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        if (!checkLocalTicket()) {
+          setLookupError('No matching booking request found on this device.');
+        }
+        return;
+      }
       const data = await res.json();
       if (!res.ok) {
-        setLookupError(data.error || 'No matching booking found.');
+        if (!checkLocalTicket()) {
+          setLookupError(data.error || 'No matching booking found.');
+        }
       } else {
         const entry: SavedTicketEntry = { ...data.booking, email: emailVal };
         setLookupResult(entry);
@@ -297,7 +459,9 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
         await refreshSavedTickets();
       }
     } catch {
-      setLookupError('Unable to check ticket status right now.');
+      if (!checkLocalTicket()) {
+        setLookupError('No matching booking request found for that reference and email.');
+      }
     } finally {
       setLookupLoading(false);
     }
@@ -307,6 +471,38 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
     setCancellingRef(ticket.referenceCode);
     setTicketActionMessage(null);
     setLookupError(null);
+
+    const cancelOfflineTicket = () => {
+      const localList = readLocalOfflineTickets();
+      const idx = localList.findIndex(
+        (item) =>
+          item.referenceCode.toUpperCase() === ticket.referenceCode.toUpperCase() &&
+          item.email.toLowerCase() === ticket.email.toLowerCase()
+      );
+      if (idx === -1) {
+        setLookupError('Could not cancel booking ticket.');
+        return;
+      }
+      const updated: LocalOfflineTicket = {
+        ...localList[idx],
+        status: 'rejected',
+        adminNotes: localList[idx].adminNotes
+          ? `${localList[idx].adminNotes} · Cancelled by guest`
+          : 'Cancelled by guest',
+        updatedAt: new Date().toISOString(),
+      };
+      localList[idx] = updated;
+      writeLocalOfflineTickets(localList);
+      setConfirmCancelRef(null);
+      setTicketActionMessage(
+        `Booking ${ticket.referenceCode} has been marked as Cancelled.`
+      );
+      if (lookupResult?.referenceCode === ticket.referenceCode) {
+        setLookupResult({ ...updated });
+      }
+      void refreshSavedTickets();
+    };
+
     try {
       const res = await fetch('/api/bookings/cancel', {
         method: 'POST',
@@ -316,6 +512,11 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
           email: ticket.email,
         }),
       });
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        cancelOfflineTicket();
+        return;
+      }
       const data = await res.json();
       if (!res.ok) {
         setLookupError(data.error || 'Could not cancel booking ticket.');
@@ -330,7 +531,7 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
         await Promise.all([refreshSavedTickets(), fetchAvailability()]);
       }
     } catch {
-      setLookupError('Network error cancelling ticket. Please try again.');
+      cancelOfflineTicket();
     } finally {
       setCancellingRef(null);
     }
@@ -344,11 +545,16 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
     }
   };
 
-  const draftWhatsAppUrl = buildWhatsAppUrl(settings.whatsappNumber, {
+  const draftWhatsAppUrl = buildWhatsAppUrl(settings.whatsappNumber || '+971542218616', {
     customerName: fullName,
-    tourTitle: selectedTour?.title,
+    customerWhatsapp: whatsappNumber,
+    tourTitle:
+      selectedTour && selectedOption
+        ? `${selectedTour.title} — ${formatText(selectedOption)}`
+        : selectedTour?.title,
     preferredDate: travelDate,
-    guests: `${adults} Adult(s)${children > 0 ? `, ${children} Child(ren)` : ''}`,
+    adults,
+    children,
     pickupLocation,
     specialRequests: requirements,
   });
@@ -820,18 +1026,19 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
 
               {receipt ? (
                 <div className="mt-6 space-y-6">
-                  <div className="rounded-xl border border-amber-300/70 bg-amber-50/70 p-6">
+                  <div className="rounded-xl border border-emerald-300 bg-emerald-50 p-6">
                     <div className="flex items-start gap-3">
-                      <Clock className="mt-0.5 h-6 w-6 shrink-0 text-amber-800" />
+                      <CheckCircle2 className="mt-0.5 h-6 w-6 shrink-0 text-emerald-700" />
                       <div>
-                        <p className="text-xs font-semibold text-amber-900">
-                          Trip Status: Pending Approval
+                        <p className="text-xs font-semibold uppercase tracking-wide text-emerald-900">
+                          Booking Request Received · Ref{' '}
+                          <span className="font-mono-num">{receipt.referenceCode}</span>
                         </p>
-                        <h3 className="mt-1 font-display text-2xl font-semibold text-[#111114]">
-                          Reference: <span className="font-mono-num">{receipt.referenceCode}</span>
+                        <h3 className="mt-1.5 font-display text-2xl font-semibold text-[#111114]">
+                          Thank you! Your booking request has been sent. Our team will confirm you on WhatsApp within 10 minutes.
                         </h3>
-                        <p className="mt-2 text-sm leading-relaxed text-neutral-700">
-                          Thank you, <strong>{receipt.fullName}</strong>. Your visit request has been saved and is currently <strong>Pending</strong> guide approval. Once approved or updated by TRIP ADVENTURE, your trip status will update automatically.
+                        <p className="mt-2 text-sm text-emerald-950/80">
+                          Choose an instant confirmation option below to send your booking details directly to our WhatsApp desk or Gmail.
                         </p>
                       </div>
                     </div>
@@ -839,11 +1046,21 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
 
                   <dl className="grid gap-4 rounded-xl border border-neutral-200 bg-[#FAF9F6] p-5 text-sm sm:grid-cols-2">
                     <div>
-                      <dt className="text-xs text-neutral-500">Selected Tour</dt>
+                      <dt className="text-xs text-neutral-500">Name</dt>
+                      <dd className="mt-0.5 font-semibold text-[#111114]">{receipt.fullName}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-neutral-500">Customer WhatsApp Number</dt>
+                      <dd className="mt-0.5 font-mono-num font-semibold text-[#111114]">
+                        {receipt.whatsappNumber}
+                      </dd>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <dt className="text-xs text-neutral-500">Tour</dt>
                       <dd className="mt-0.5 font-semibold text-[#111114]">{receipt.tourTitle}</dd>
                     </div>
                     <div>
-                      <dt className="text-xs text-neutral-500">Preferred Travel Date</dt>
+                      <dt className="text-xs text-neutral-500">Date</dt>
                       <dd className="mt-0.5 font-mono-num font-semibold text-[#111114]">
                         {receipt.travelDate}
                       </dd>
@@ -851,41 +1068,37 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
                     <div>
                       <dt className="text-xs text-neutral-500">Guests</dt>
                       <dd className="mt-0.5 font-mono-num font-medium text-[#111114]">
-                        {receipt.adults} Adult(s), {receipt.children} Child(ren)
+                        Adults: {receipt.adults} · Children: {receipt.children}
                       </dd>
                     </div>
-                    <div>
-                      <dt className="text-xs text-neutral-500">Pickup Location</dt>
-                      <dd className="mt-0.5 font-medium text-[#111114]">{receipt.pickupLocation}</dd>
-                    </div>
+                    {receipt.pickupLocation && receipt.pickupLocation !== 'To be confirmed on WhatsApp' && (
+                      <div>
+                        <dt className="text-xs text-neutral-500">Pickup Location</dt>
+                        <dd className="mt-0.5 font-medium text-[#111114]">{receipt.pickupLocation}</dd>
+                      </div>
+                    )}
                     {receipt.requirements && (
                       <div className="sm:col-span-2">
-                        <dt className="text-xs text-neutral-500">Additional Requirements</dt>
+                        <dt className="text-xs text-neutral-500">Additional Notes</dt>
                         <dd className="mt-0.5 text-neutral-700">{receipt.requirements}</dd>
                       </div>
                     )}
                   </dl>
 
                   <div className="flex flex-wrap items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSectionTab('status');
-                        refreshSavedTickets();
-                      }}
-                      className="inline-flex items-center gap-2 rounded-lg bg-[#0B0B0D] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#1F1F25]"
-                    >
-                      <Ticket className="h-4 w-4 text-[#C59B38]" />
-                      View My Live Trip Status
-                    </button>
                     <a
-                      href={buildWhatsAppUrl(settings.whatsappNumber, {
+                      href={buildWhatsAppUrl(settings.whatsappNumber || '+971542218616', {
                         referenceCode: receipt.referenceCode,
                         customerName: receipt.fullName,
+                        customerWhatsapp: receipt.whatsappNumber,
                         tourTitle: receipt.tourTitle,
                         preferredDate: receipt.travelDate,
-                        guests: `${receipt.adults} Adult(s), ${receipt.children} Child(ren)`,
-                        pickupLocation: receipt.pickupLocation,
+                        adults: receipt.adults,
+                        children: receipt.children,
+                        pickupLocation:
+                          receipt.pickupLocation !== 'To be confirmed on WhatsApp'
+                            ? receipt.pickupLocation
+                            : undefined,
                         specialRequests: receipt.requirements,
                       })}
                       target="_blank"
@@ -893,15 +1106,48 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
                       className="inline-flex items-center gap-2 rounded-lg bg-[#15803D] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#166534]"
                     >
                       <MessageCircle className="h-4 w-4" />
-                      Send Inquiry on WhatsApp
+                      Confirm on WhatsApp
+                    </a>
+                    <a
+                      href={buildBookingMailtoUrl(settings.email || 'tripadventure63@gmail.com', {
+                        referenceCode: receipt.referenceCode,
+                        customerName: receipt.fullName,
+                        customerWhatsapp: receipt.whatsappNumber,
+                        tourTitle: receipt.tourTitle,
+                        preferredDate: receipt.travelDate,
+                        adults: receipt.adults,
+                        children: receipt.children,
+                        pickupLocation:
+                          receipt.pickupLocation !== 'To be confirmed on WhatsApp'
+                            ? receipt.pickupLocation
+                            : undefined,
+                        specialRequests: receipt.requirements,
+                      })}
+                      className="inline-flex items-center gap-2 rounded-lg bg-[#0B0B0D] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#1F1F25]"
+                    >
+                      <Mail className="h-4 w-4 text-[#C59B38]" />
+                      Send on Gmail
                     </a>
                     <button
                       type="button"
                       onClick={() => setReceipt(null)}
                       className="inline-flex items-center rounded-lg border border-neutral-300 bg-white px-5 py-3 text-sm font-semibold text-[#111114] hover:bg-neutral-50"
                     >
-                      Book Another Visit
+                      Book Another Tour
                     </button>
+                    {receipt.email && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSectionTab('status');
+                          refreshSavedTickets();
+                        }}
+                        className="inline-flex items-center gap-2 rounded-lg border border-neutral-300 bg-white px-4 py-3 text-xs font-semibold text-[#8B6816] hover:border-[#C59B38]"
+                      >
+                        <Ticket className="h-4 w-4" />
+                        Check Trip Status
+                      </button>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -929,23 +1175,6 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
                       />
                     </div>
                     <div>
-                      <label htmlFor="bk-email" className="block text-xs font-semibold text-neutral-700">
-                        Email Address *
-                      </label>
-                      <input
-                        id="bk-email"
-                        type="email"
-                        required
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="you@example.com"
-                        className="mt-1.5 w-full rounded-lg border border-neutral-300 px-3.5 py-2.5 text-sm text-[#111114] focus:border-[#C59B38] focus:outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div>
                       <label htmlFor="bk-whatsapp" className="block text-xs font-semibold text-neutral-700">
                         WhatsApp Number *
                       </label>
@@ -956,20 +1185,6 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
                         value={whatsappNumber}
                         onChange={(e) => setWhatsappNumber(e.target.value)}
                         placeholder="+971 / country code + number"
-                        className="mt-1.5 w-full rounded-lg border border-neutral-300 px-3.5 py-2.5 text-sm text-[#111114] focus:border-[#C59B38] focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="bk-nationality" className="block text-xs font-semibold text-neutral-700">
-                        Nationality *
-                      </label>
-                      <input
-                        id="bk-nationality"
-                        type="text"
-                        required
-                        value={nationality}
-                        onChange={(e) => setNationality(e.target.value)}
-                        placeholder="Country of passport / residence"
                         className="mt-1.5 w-full rounded-lg border border-neutral-300 px-3.5 py-2.5 text-sm text-[#111114] focus:border-[#C59B38] focus:outline-none"
                       />
                     </div>
@@ -986,42 +1201,93 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
                       onChange={(e) => setTourId(e.target.value)}
                       className="mt-1.5 w-full rounded-lg border border-neutral-300 bg-white px-3.5 py-2.5 text-sm text-[#111114] focus:border-[#C59B38] focus:outline-none"
                     >
-                      {tours.map((tour) => (
-                        <option key={tour.id} value={tour.id}>
-                          {tour.title}
-                          {tour.startingPriceAed !== null
-                            ? ` (From ${formatAmount(tour.startingPriceAed)})`
-                            : ''}
-                        </option>
-                      ))}
+                      {tours.map((tour) => {
+                        const rateSummary = tour.priceNote
+                          ? formatText(tour.priceNote)
+                          : tour.startingPriceAed !== null
+                            ? `From ${formatAmount(tour.startingPriceAed)}`
+                            : '';
+                        return (
+                          <option key={tour.id} value={tour.id}>
+                            {tour.title}
+                            {rateSummary ? ` — ${rateSummary}` : ''}
+                          </option>
+                        );
+                      })}
                     </select>
                     {selectedTour && (
-                      <p className="font-mono-num mt-1.5 text-[11px] font-medium text-[#8B6816]">
-                        {selectedTour.priceNote
-                          ? formatText(selectedTour.priceNote)
-                          : selectedTour.startingPriceAed !== null
-                            ? `From ${formatAmount(selectedTour.startingPriceAed)}`
-                            : ''}{' '}
-                        · {selectedTour.duration}
-                      </p>
+                      <div className="mt-2.5 space-y-2.5 rounded-xl border border-neutral-200 bg-[#FAF9F6] p-3.5">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="font-mono-num text-xs font-semibold text-[#8B6816]">
+                            {selectedTour.priceNote
+                              ? formatText(selectedTour.priceNote)
+                              : selectedTour.startingPriceAed !== null
+                                ? `From ${formatAmount(selectedTour.startingPriceAed)}`
+                                : ''}
+                          </span>
+                          <span className="text-[11px] font-medium text-neutral-600">
+                            {selectedTour.duration}
+                          </span>
+                        </div>
+
+                        {selectedTour.bookingOptions.length > 0 && (
+                          <div>
+                            <p className="text-[11px] font-semibold text-neutral-700">
+                              Select Half-Day / Full-Day Tour Package &amp; Price *
+                            </p>
+                            <div className="mt-1.5 grid gap-2 sm:grid-cols-2">
+                              {selectedTour.bookingOptions.map((opt) => {
+                                const isActive = selectedOption === opt;
+                                return (
+                                  <button
+                                    key={opt}
+                                    type="button"
+                                    onClick={() => setSelectedOption(opt)}
+                                    className={`flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left text-xs font-semibold transition-colors ${
+                                      isActive
+                                        ? 'border-[#C59B38] bg-[#C59B38]/15 text-[#111114]'
+                                        : 'border-neutral-200 bg-white text-neutral-700 hover:border-[#C59B38]/60'
+                                    }`}
+                                  >
+                                    <span>{formatText(opt)}</span>
+                                    {isActive && (
+                                      <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[#8B6816]" />
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
 
                   <div>
                     <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                      <span className="block text-xs font-semibold text-neutral-700">
+                      <label htmlFor="bk-date" className="block text-xs font-semibold text-neutral-700">
                         Preferred Travel Date *
-                      </span>
-                      {travelDate ? (
-                        <span className="font-mono-num inline-flex items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-900">
-                          <CheckCircle2 className="h-3 w-3 text-emerald-700" />
-                          {formatDisplayDate(travelDate)}
-                        </span>
-                      ) : (
-                        <span className="text-[11px] text-amber-800">
-                          Pick an available date on the calendar
-                        </span>
-                      )}
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          id="bk-date"
+                          type="date"
+                          required
+                          min={todayStr}
+                          value={travelDate}
+                          onChange={(e) => {
+                            setTravelDate(e.target.value);
+                            setError(null);
+                          }}
+                          className="font-mono-num rounded-md border border-neutral-300 bg-white px-2.5 py-1 text-xs font-semibold text-[#111114] focus:border-[#C59B38] focus:outline-none"
+                        />
+                        {travelDate && (
+                          <span className="font-mono-num hidden sm:inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-900">
+                            <CheckCircle2 className="h-3 w-3 text-emerald-700" />
+                            {formatDisplayDate(travelDate)}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <AvailabilityCalendar
                       mode="select"
@@ -1039,42 +1305,92 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
 
                   <div className="grid gap-4 sm:grid-cols-3">
                     <div>
-                      <label htmlFor="bk-adults" className="block text-xs font-semibold text-neutral-700">
+                      <span
+                        id="bk-adults-label"
+                        className="block text-xs font-semibold text-neutral-700"
+                      >
                         Number of Adults *
-                      </label>
-                      <input
-                        id="bk-adults"
-                        type="number"
-                        min={1}
-                        max={50}
-                        required
-                        value={adults}
-                        onChange={(e) => setAdults(Math.max(1, Number(e.target.value)))}
-                        className="font-mono-num mt-1.5 w-full rounded-lg border border-neutral-300 px-3.5 py-2.5 text-sm text-[#111114] focus:border-[#C59B38] focus:outline-none"
-                      />
+                      </span>
+                      <div
+                        role="group"
+                        aria-labelledby="bk-adults-label"
+                        className="mt-1.5 flex items-center justify-between rounded-lg border border-neutral-300 bg-[#FAF9F6] p-1"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => setAdults((prev) => Math.max(1, prev - 1))}
+                          disabled={adults <= 1}
+                          aria-label="Decrease number of adults"
+                          className="flex h-10 w-10 items-center justify-center rounded-md border border-neutral-200 bg-white text-[#111114] transition-colors hover:border-[#C59B38] hover:bg-[#FAF9F6] disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          <Minus className="h-4 w-4" />
+                        </button>
+                        <span
+                          aria-live="polite"
+                          className="font-mono-num min-w-[3rem] text-center text-base font-semibold text-[#111114] select-none"
+                        >
+                          {adults}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setAdults((prev) => Math.min(20, prev + 1))}
+                          disabled={adults >= 20}
+                          aria-label="Increase number of adults"
+                          className="flex h-10 w-10 items-center justify-center rounded-md border border-neutral-200 bg-white text-[#111114] transition-colors hover:border-[#C59B38] hover:bg-[#FAF9F6] disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </button>
+                      </div>
+                      <p className="mt-1 text-[11px] text-neutral-500">1 – 20 adults</p>
                     </div>
+
                     <div>
-                      <label htmlFor="bk-children" className="block text-xs font-semibold text-neutral-700">
+                      <span
+                        id="bk-children-label"
+                        className="block text-xs font-semibold text-neutral-700"
+                      >
                         Number of Children
-                      </label>
-                      <input
-                        id="bk-children"
-                        type="number"
-                        min={0}
-                        max={50}
-                        value={children}
-                        onChange={(e) => setChildren(Math.max(0, Number(e.target.value)))}
-                        className="font-mono-num mt-1.5 w-full rounded-lg border border-neutral-300 px-3.5 py-2.5 text-sm text-[#111114] focus:border-[#C59B38] focus:outline-none"
-                      />
+                      </span>
+                      <div
+                        role="group"
+                        aria-labelledby="bk-children-label"
+                        className="mt-1.5 flex items-center justify-between rounded-lg border border-neutral-300 bg-[#FAF9F6] p-1"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => setChildren((prev) => Math.max(0, prev - 1))}
+                          disabled={children <= 0}
+                          aria-label="Decrease number of children"
+                          className="flex h-10 w-10 items-center justify-center rounded-md border border-neutral-200 bg-white text-[#111114] transition-colors hover:border-[#C59B38] hover:bg-[#FAF9F6] disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          <Minus className="h-4 w-4" />
+                        </button>
+                        <span
+                          aria-live="polite"
+                          className="font-mono-num min-w-[3rem] text-center text-base font-semibold text-[#111114] select-none"
+                        >
+                          {children}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setChildren((prev) => Math.min(20, prev + 1))}
+                          disabled={children >= 20}
+                          aria-label="Increase number of children"
+                          className="flex h-10 w-10 items-center justify-center rounded-md border border-neutral-200 bg-white text-[#111114] transition-colors hover:border-[#C59B38] hover:bg-[#FAF9F6] disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </button>
+                      </div>
+                      <p className="mt-1 text-[11px] text-neutral-500">0 – 20 children</p>
                     </div>
+
                     <div>
                       <label htmlFor="bk-pickup" className="block text-xs font-semibold text-neutral-700">
-                        Hotel or Pickup Location *
+                        Hotel or Pickup Location (Optional)
                       </label>
                       <input
                         id="bk-pickup"
                         type="text"
-                        required
                         value={pickupLocation}
                         onChange={(e) => setPickupLocation(e.target.value)}
                         placeholder="Hotel name, area, or DXB terminal"
@@ -1083,16 +1399,45 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
                     </div>
                   </div>
 
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label htmlFor="bk-email" className="block text-xs font-semibold text-neutral-700">
+                        Email Address (Optional)
+                      </label>
+                      <input
+                        id="bk-email"
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="you@example.com"
+                        className="mt-1.5 w-full rounded-lg border border-neutral-300 px-3.5 py-2.5 text-sm text-[#111114] focus:border-[#C59B38] focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="bk-nationality" className="block text-xs font-semibold text-neutral-700">
+                        Nationality (Optional)
+                      </label>
+                      <input
+                        id="bk-nationality"
+                        type="text"
+                        value={nationality}
+                        onChange={(e) => setNationality(e.target.value)}
+                        placeholder="Country of passport / residence"
+                        className="mt-1.5 w-full rounded-lg border border-neutral-300 px-3.5 py-2.5 text-sm text-[#111114] focus:border-[#C59B38] focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
                   <div>
                     <label htmlFor="bk-req" className="block text-xs font-semibold text-neutral-700">
-                      Additional Requirements
+                      Additional Requirements (Optional)
                     </label>
                     <textarea
                       id="bk-req"
-                      rows={3}
+                      rows={2}
                       value={requirements}
                       onChange={(e) => setRequirements(e.target.value)}
-                      placeholder="Preferred start time, child seat, photography stops, mobility notes, or custom landmarks..."
+                      placeholder="Preferred start time, child seat, photography stops, or custom landmarks..."
                       className="mt-1.5 w-full rounded-lg border border-neutral-300 px-3.5 py-2.5 text-sm text-[#111114] focus:border-[#C59B38] focus:outline-none"
                     />
                   </div>
@@ -1150,11 +1495,27 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
                   </span>
                 </li>
               </ol>
-              <div className="mt-6 border-t border-white/10 pt-5">
-                <p className="text-xs text-neutral-400">Direct WhatsApp Desk</p>
-                <p className="font-mono-num mt-1 text-base font-semibold text-white">
-                  {settings.whatsappNumber}
-                </p>
+              <div className="mt-6 space-y-2 border-t border-white/10 pt-5">
+                <div>
+                  <p className="text-xs text-neutral-400">Direct WhatsApp Desk</p>
+                  <a
+                    href={buildWhatsAppUrl(settings.whatsappNumber || '+971542218616')}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-mono-num mt-1 inline-block text-base font-semibold text-white hover:text-[#F5E4B8]"
+                  >
+                    {settings.whatsappNumber || '+971542218616'}
+                  </a>
+                </div>
+                <div>
+                  <p className="text-xs text-neutral-400">Official Gmail</p>
+                  <a
+                    href={`mailto:${settings.email || 'tripadventure63@gmail.com'}`}
+                    className="mt-0.5 inline-block text-xs font-semibold text-[#F5E4B8] hover:underline"
+                  >
+                    {settings.email || 'tripadventure63@gmail.com'}
+                  </a>
+                </div>
               </div>
             </div>
 

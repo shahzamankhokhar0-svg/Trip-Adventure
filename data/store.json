@@ -35,15 +35,117 @@
   },
   "tours": [
     {
+      "id": "tour-half-day-dubai",
+      "slug": "half-day-dubai-tour",
+      "title": "Half-Day Dubai Tour (4 Hours)",
+      "category": "Dubai City Tour",
+      "imageUrl": "/src/assets/images/dubai_frame_zabeel_panorama_1795199286236.jpg",
+      "galleryImages": [
+        "/src/assets/images/dubai_frame_zabeel_panorama_1795199286236.jpg",
+        "/src/assets/images/burj_al_arab_jumeirah_coast_1795199286770.jpg",
+        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_8.53.30_AM_2f1cf85e.jpeg"
+      ],
+      "description": "A focused 4-hour Half-Day private Dubai sightseeing tour covering top historic and modern highlights at a maximum rate of 250 AED.",
+      "duration": "Half-Day (4 Hours)",
+      "startingPriceAed": 250,
+      "priceNote": "Half-Day Tour (4 Hours): 250 AED",
+      "availabilityNote": "Confirmed after schedule check with Shahzaman Khokhar",
+      "itinerary": [
+        "Hotel or residence pickup in Dubai",
+        "Al Fahidi Historical District & Dubai Creek scenic stop",
+        "Jumeirah Mosque exterior & Burj Al Arab beachfront photo stop",
+        "Downtown Dubai & Burj Khalifa / Dubai Mall drop-off or hotel return"
+      ],
+      "pickupInfo": "Complimentary pickup & drop-off from your Dubai hotel or residence.",
+      "included": [
+        "English-speaking Tour Guide (Usama or Abdul Qadir)",
+        "Program coordination by Shahzaman Khokhar",
+        "Half-Day (4 Hours) curated sightseeing up to 250 AED max",
+        "Bottled mineral water during the tour"
+      ],
+      "excluded": [
+        "Attraction observation deck tickets unless requested",
+        "Meals, personal shopping, and gratuities"
+      ],
+      "bookingOptions": [
+        "Half-Day Tour (4 Hours) – 250 AED"
+      ],
+      "featured": true,
+      "sortOrder": 1
+    },
+    {
+      "id": "tour-full-day-dubai",
+      "slug": "full-day-dubai-tour",
+      "title": "Full-Day Dubai Tour (8 Hours)",
+      "category": "Dubai City Tour",
+      "imageUrl": "/src/assets/images/hero_dubai_skyline_1794985266623.jpg",
+      "galleryImages": [
+        "/src/assets/images/burj_al_arab_jumeirah_coast_1795199286770.jpg",
+        "/src/assets/images/dubai_frame_zabeel_panorama_1795199286236.jpg",
+        "/src/assets/images/atlantis_palm_golden_crescent_1795199286173.jpg",
+        "/src/assets/images/desert_safari_sunset_luxury_1795199286659.jpg",
+        "/src/assets/images/desert_camp_starlight_dinner_1795199287008.jpg",
+        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.32_AM_c55829f1.jpeg",
+        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.19_AM_3d5b2311.jpeg",
+        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.24_AM__1__274d09b4.jpeg",
+        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.25_AM_217a33ae.jpeg",
+        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.18_AM_1b47f683.jpeg",
+        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.27_AM_c5af3e19.jpeg",
+        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_8.53.31_AM_7f135b49.jpeg"
+      ],
+      "description": "A complete 8-hour Full-Day Dubai sightseeing tour combining Old Dubai souks, Jumeirah coast, Palm Jumeirah, Dubai Marina, and Downtown Burj Khalifa at a maximum rate of 500 AED.",
+      "duration": "Full-Day (8 Hours)",
+      "startingPriceAed": 500,
+      "priceNote": "Full-Day Tour (8 Hours): 500 AED",
+      "availabilityNote": "Confirmed after schedule check with Shahzaman Khokhar",
+      "itinerary": [
+        "Morning hotel pickup in Dubai",
+        "Old Dubai Al Fahidi Heritage District, Dubai Creek & Spice/Gold Souks",
+        "Jumeirah Beachfront (Burj Al Arab) & Palm Jumeirah Atlantis photo stop",
+        "Dubai Marina promenade walk & Museum of the Future photo stop",
+        "Downtown Dubai, Burj Khalifa & Dubai Fountain evening drop-off or return"
+      ],
+      "pickupInfo": "Complimentary pickup & drop-off from your Dubai hotel, residence, or cruise port.",
+      "included": [
+        "English-speaking Tour Guide (Usama or Abdul Qadir)",
+        "Program coordination by Shahzaman Khokhar",
+        "Full-Day (8 Hours) complete Dubai coverage at 500 AED max",
+        "Bottled mineral water during the tour"
+      ],
+      "excluded": [
+        "Attraction observation deck tickets unless requested",
+        "Lunch, personal shopping, and gratuities"
+      ],
+      "bookingOptions": [
+        "Full-Day Tour (8 Hours) – 500 AED"
+      ],
+      "featured": true,
+      "sortOrder": 2
+    },
+    {
       "id": "tour-dubai-city",
       "slug": "dubai-city-tour",
       "title": "Dubai City Tour",
       "category": "Dubai City Tour",
       "imageUrl": "/src/assets/images/hero_dubai_skyline_1794985266623.jpg",
-      "description": "A balanced introduction to modern and historic Dubai, connecting Downtown landmarks, coastal viewpoints, and traditional creek neighborhoods with flexible Half-Day or Full-Day scheduling.",
+      "galleryImages": [
+        "/src/assets/images/burj_al_arab_jumeirah_coast_1795199286770.jpg",
+        "/src/assets/images/dubai_frame_zabeel_panorama_1795199286236.jpg",
+        "/src/assets/images/atlantis_palm_golden_crescent_1795199286173.jpg",
+        "/src/assets/images/desert_safari_sunset_luxury_1795199286659.jpg",
+        "/src/assets/images/desert_camp_starlight_dinner_1795199287008.jpg",
+        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.32_AM_c55829f1.jpeg",
+        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.19_AM_3d5b2311.jpeg",
+        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.24_AM__1__274d09b4.jpeg",
+        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.25_AM_217a33ae.jpeg",
+        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.18_AM_1b47f683.jpeg",
+        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.27_AM_c5af3e19.jpeg",
+        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_8.53.31_AM_7f135b49.jpeg"
+      ],
+      "description": "A balanced introduction to modern and historic Dubai, connecting Downtown landmarks, coastal viewpoints, and traditional creek neighborhoods with Half-Day (250 AED) or Full-Day (500 AED) scheduling.",
       "duration": "Half-Day (4 Hours) / Full-Day (8 Hours)",
-      "startingPriceAed": 350,
-      "priceNote": "Half-Day: 350 AED · Full-Day: 600 AED",
+      "startingPriceAed": 250,
+      "priceNote": "Half-Day: 250 AED · Full-Day: 500 AED",
       "availabilityNote": "Confirmed after schedule check with Shahzaman Khokhar",
       "itinerary": [
         "Hotel or residence pickup in Dubai",
@@ -56,7 +158,7 @@
       "included": [
         "English-speaking Tour Guide (Usama or Abdul Qadir)",
         "Program coordination by Shahzaman Khokhar",
-        "Flexible Half-Day (4h) or Full-Day (8h) pacing & landmark photo stops",
+        "Flexible Half-Day (4h – 250 AED) or Full-Day (8h – 500 AED) pacing",
         "Bottled mineral water during the tour"
       ],
       "excluded": [
@@ -64,26 +166,12 @@
         "Meals, personal shopping, and gratuities"
       ],
       "bookingOptions": [
-        "Half-Day Tour (4 Hours) – 350 AED",
-        "Full-Day Tour (8 Hours) – 600 AED",
+        "Half-Day Tour (4 Hours) – 250 AED",
+        "Full-Day Tour (8 Hours) – 500 AED",
         "WhatsApp Custom Quote"
       ],
       "featured": true,
-      "sortOrder": 1,
-      "galleryImages": [
-        "/src/assets/images/burj_al_arab_jumeirah_coast_1795199286770.jpg",
-        "/src/assets/images/dubai_frame_zabeel_panorama_1795199286236.jpg",
-        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.32_AM_c55829f1.jpeg",
-        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.27_AM_c5af3e19.jpeg",
-        "/src/assets/images/atlantis_palm_golden_crescent_1795199286173.jpg",
-        "/src/assets/images/desert_safari_sunset_luxury_1795199286659.jpg",
-        "/src/assets/images/desert_camp_starlight_dinner_1795199287008.jpg",
-        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.19_AM_3d5b2311.jpeg",
-        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.24_AM__1__274d09b4.jpeg",
-        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.25_AM_217a33ae.jpeg",
-        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.18_AM_1b47f683.jpeg",
-        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_8.53.31_AM_7f135b49.jpeg"
-      ]
+      "sortOrder": 3
     },
     {
       "id": "tour-desert-safari",
@@ -91,6 +179,10 @@
       "title": "Desert Safari Adventure (Per Person)",
       "category": "Desert Safari Adventure",
       "imageUrl": "/src/assets/images/desert_safari_sunset_luxury_1795199286659.jpg",
+      "galleryImages": [
+        "/src/assets/images/desert_safari_sunset_luxury_1795199286659.jpg",
+        "/src/assets/images/desert_camp_starlight_dinner_1795199287008.jpg"
+      ],
       "description": "Experience the golden Arabian dunes outside Dubai on a per-person basis with dune bashing, sunset photo stops, camel encounters, and Arabian desert camp dining.",
       "duration": "5 – 6 Hours (Afternoon to Evening)",
       "startingPriceAed": 120,
@@ -119,11 +211,7 @@
         "Private 4x4 Vehicle (5–6 People) – 800 AED"
       ],
       "featured": true,
-      "sortOrder": 2,
-      "galleryImages": [
-        "/src/assets/images/desert_safari_sunset_luxury_1795199286659.jpg",
-        "/src/assets/images/desert_camp_starlight_dinner_1795199287008.jpg"
-      ]
+      "sortOrder": 2
     },
     {
       "id": "tour-private-desert-safari",
@@ -131,6 +219,10 @@
       "title": "Private 4x4 Desert Safari (5–6 People)",
       "category": "Desert Safari Adventure",
       "imageUrl": "/src/assets/images/desert_camp_starlight_dinner_1795199287008.jpg",
+      "galleryImages": [
+        "/src/assets/images/desert_camp_starlight_dinner_1795199287008.jpg",
+        "/src/assets/images/desert_safari_sunset_luxury_1795199286659.jpg"
+      ],
       "description": "Exclusive private-basis Desert Safari in a dedicated 4x4 vehicle for families or groups of 5 to 6 people, featuring private dune bashing, sunset viewpoints, and desert camp hospitality.",
       "duration": "5 – 6 Hours (Afternoon to Evening)",
       "startingPriceAed": 800,
@@ -158,11 +250,7 @@
         "Private 4x4 Vehicle (5–6 Guests) – 800 AED"
       ],
       "featured": true,
-      "sortOrder": 3,
-      "galleryImages": [
-        "/src/assets/images/desert_camp_starlight_dinner_1795199287008.jpg",
-        "/src/assets/images/desert_safari_sunset_luxury_1795199286659.jpg"
-      ]
+      "sortOrder": 3
     },
     {
       "id": "tour-abu-dhabi",
@@ -170,10 +258,13 @@
       "title": "Abu Dhabi City Tour",
       "category": "Abu Dhabi City Tour",
       "imageUrl": "/src/assets/images/tour_abu_dhabi_1794985269450.jpg",
+      "galleryImages": [
+        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.19_AM_3d5b2311.jpeg"
+      ],
       "description": "A full-day private excursion from Dubai to the UAE capital, featuring Sheikh Zayed Grand Mosque, the Corniche waterfront, and cultural landmarks on Saadiyat and Yas Islands.",
       "duration": "Full-Day (8 – 9 Hours)",
-      "startingPriceAed": 750,
-      "priceNote": "Full-Day Private Tour: 750 AED",
+      "startingPriceAed": 500,
+      "priceNote": "Full-Day Private Tour: 500 AED",
       "availabilityNote": "Confirmed after schedule check with Shahzaman Khokhar",
       "itinerary": [
         "Morning departure from Dubai via Sheikh Zayed Road",
@@ -193,14 +284,11 @@
         "Lunch & personal expenses"
       ],
       "bookingOptions": [
-        "Full-Day Private Trip – 750 AED",
+        "Full-Day Private Trip (8 Hours) – 500 AED",
         "Custom Cultural Stopovers"
       ],
       "featured": true,
-      "sortOrder": 4,
-      "galleryImages": [
-        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.19_AM_3d5b2311.jpeg"
-      ]
+      "sortOrder": 6
     },
     {
       "id": "tour-burj-khalifa",
@@ -208,6 +296,11 @@
       "title": "Burj Khalifa Experience",
       "category": "Burj Khalifa Experience",
       "imageUrl": "/src/assets/images/tour_burj_khalifa_1794985267744.jpg",
+      "galleryImages": [
+        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.24_AM__1__274d09b4.jpeg",
+        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_8.53.31_AM_7f135b49.jpeg",
+        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_8.53.30_AM_2f1cf85e.jpeg"
+      ],
       "description": "Discover Downtown Dubai around the world’s tallest tower, timed for golden hour or evening fountain shows with seamless navigation through Dubai Mall and promenade viewpoints.",
       "duration": "Half-Day (4 Hours) / Full-Day Combo (8 Hours)",
       "startingPriceAed": 250,
@@ -233,12 +326,7 @@
         "Full-Day Downtown Combo (8 Hours) – 450 AED"
       ],
       "featured": false,
-      "sortOrder": 5,
-      "galleryImages": [
-        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.24_AM__1__274d09b4.jpeg",
-        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_8.53.31_AM_7f135b49.jpeg",
-        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_8.53.30_AM_2f1cf85e.jpeg"
-      ]
+      "sortOrder": 5
     },
     {
       "id": "tour-dubai-marina",
@@ -246,6 +334,10 @@
       "title": "Dubai Marina Tour",
       "category": "Dubai Marina Tour",
       "imageUrl": "/src/assets/images/tour_dubai_marina_1794985268367.jpg",
+      "galleryImages": [
+        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.25_AM_217a33ae.jpeg",
+        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_8.53.28_AM_e6ebe00d.jpeg"
+      ],
       "description": "Stroll the illuminated canal promenade of Dubai Marina, JBR waterfront, and Bluewaters Island with optional private yacht or dhow cruise coordination at sunset.",
       "duration": "Half-Day (4 Hours) / Full-Day Coastal (8 Hours)",
       "startingPriceAed": 250,
@@ -271,11 +363,7 @@
         "Full-Day Coastal + Marina (8 Hours) – 450 AED"
       ],
       "featured": false,
-      "sortOrder": 6,
-      "galleryImages": [
-        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.25_AM_217a33ae.jpeg",
-        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_8.53.28_AM_e6ebe00d.jpeg"
-      ]
+      "sortOrder": 6
     },
     {
       "id": "tour-palm-jumeirah",
@@ -283,10 +371,16 @@
       "title": "Palm Jumeirah Experience",
       "category": "Palm Jumeirah Experience",
       "imageUrl": "/src/assets/images/atlantis_palm_golden_crescent_1795199286173.jpg",
+      "galleryImages": [
+        "/src/assets/images/atlantis_palm_golden_crescent_1795199286173.jpg",
+        "/src/assets/images/burj_al_arab_jumeirah_coast_1795199286770.jpg",
+        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_8.53.28_AM_e6ebe00d.jpeg",
+        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_8.53.29_AM_8227e46b.jpeg"
+      ],
       "description": "Explore Dubai’s iconic palm-shaped island across The Pointe boardwalk, Palm Monorail views, and Atlantis The Palm coastal vistas.",
       "duration": "Half-Day (4 Hours) / Full-Day West Coast (8 Hours)",
-      "startingPriceAed": 300,
-      "priceNote": "Half-Day: 300 AED · Full-Day West Coast: 520 AED",
+      "startingPriceAed": 250,
+      "priceNote": "Half-Day: 250 AED · Full-Day West Coast: 500 AED",
       "availabilityNote": "Confirmed after schedule check with Shahzaman Khokhar",
       "itinerary": [
         "Palm Jumeirah trunk drive & West Beach boardwalk",
@@ -304,17 +398,11 @@
         "Meals and personal purchases"
       ],
       "bookingOptions": [
-        "Half-Day Palm Loop (4 Hours) – 300 AED",
-        "Full-Day Palm & Marina (8 Hours) – 520 AED"
+        "Half-Day Palm Loop (4 Hours) – 250 AED",
+        "Full-Day Palm & Marina (8 Hours) – 500 AED"
       ],
       "featured": false,
-      "sortOrder": 7,
-      "galleryImages": [
-        "/src/assets/images/atlantis_palm_golden_crescent_1795199286173.jpg",
-        "/src/assets/images/burj_al_arab_jumeirah_coast_1795199286770.jpg",
-        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_8.53.28_AM_e6ebe00d.jpeg",
-        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_8.53.29_AM_8227e46b.jpeg"
-      ]
+      "sortOrder": 9
     },
     {
       "id": "tour-old-dubai",
@@ -322,6 +410,12 @@
       "title": "Old Dubai Heritage Tour",
       "category": "Old Dubai Heritage Tour",
       "imageUrl": "/src/assets/images/tour_old_dubai_1794985269475.jpg",
+      "galleryImages": [
+        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.11_AM_79b046a0.jpeg",
+        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.16_AM_eeeca48d.jpeg",
+        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.17_AM_28618dd5.jpeg",
+        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.08_AM__2__40a97e0d.jpeg"
+      ],
       "description": "Step back into Dubai’s trading roots through Al Fahidi wind-tower courtyards, a traditional wooden abra crossing on Dubai Creek, and the Gold & Spice Souks.",
       "duration": "Half-Day (4 Hours) / Full-Day Heritage + Modern (8 Hours)",
       "startingPriceAed": 200,
@@ -348,13 +442,7 @@
         "Full-Day Old & New Dubai (8 Hours) – 420 AED"
       ],
       "featured": true,
-      "sortOrder": 8,
-      "galleryImages": [
-        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.11_AM_79b046a0.jpeg",
-        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.16_AM_eeeca48d.jpeg",
-        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.17_AM_28618dd5.jpeg",
-        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.08_AM__2__40a97e0d.jpeg"
-      ]
+      "sortOrder": 10
     },
     {
       "id": "tour-shopping",
@@ -364,8 +452,8 @@
       "imageUrl": "/src/assets/images/tour_museum_future_1794985270626.jpg",
       "description": "Tailored shopping accompaniment covering luxury flagship boutiques at The Dubai Mall, Mall of the Emirates, Souk Madinat, and traditional Gold & Textile markets.",
       "duration": "Half-Day (4 Hours) / Full-Day (8 Hours)",
-      "startingPriceAed": 300,
-      "priceNote": "Half-Day: 300 AED · Full-Day: 550 AED",
+      "startingPriceAed": 250,
+      "priceNote": "Half-Day: 250 AED · Full-Day: 500 AED",
       "availabilityNote": "Confirmed after schedule check with Shahzaman Khokhar",
       "itinerary": [
         "Personalized briefing based on your shopping wishlist",
@@ -382,11 +470,11 @@
         "Personal shopping purchases & meals"
       ],
       "bookingOptions": [
-        "Half-Day Shopping (4 Hours) – 300 AED",
-        "Full-Day Malls & Souks (8 Hours) – 550 AED"
+        "Half-Day Shopping (4 Hours) – 250 AED",
+        "Full-Day Malls & Souks (8 Hours) – 500 AED"
       ],
       "featured": false,
-      "sortOrder": 9
+      "sortOrder": 11
     },
     {
       "id": "tour-private-sightseeing",
@@ -394,10 +482,24 @@
       "title": "Private Dubai Sightseeing",
       "category": "Private Dubai Sightseeing",
       "imageUrl": "/src/assets/images/tour_burj_khalifa_1794985267744.jpg",
+      "galleryImages": [
+        "/src/assets/images/burj_al_arab_jumeirah_coast_1795199286770.jpg",
+        "/src/assets/images/dubai_frame_zabeel_panorama_1795199286236.jpg",
+        "/src/assets/images/atlantis_palm_golden_crescent_1795199286173.jpg",
+        "/src/assets/images/desert_safari_sunset_luxury_1795199286659.jpg",
+        "/src/assets/images/desert_camp_starlight_dinner_1795199287008.jpg",
+        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.32_AM_c55829f1.jpeg",
+        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.19_AM_3d5b2311.jpeg",
+        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.24_AM__1__274d09b4.jpeg",
+        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.25_AM_217a33ae.jpeg",
+        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.18_AM_1b47f683.jpeg",
+        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.27_AM_c5af3e19.jpeg",
+        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_8.53.31_AM_7f135b49.jpeg"
+      ],
       "description": "Exclusive sightseeing exclusively for your family, couple, or small group — combining architectural highlights, hidden neighborhoods, and scenic breaks without rushing.",
       "duration": "Half-Day (4 Hours) / Full-Day (8 Hours)",
-      "startingPriceAed": 400,
-      "priceNote": "Half-Day: 400 AED · Full-Day: 700 AED",
+      "startingPriceAed": 250,
+      "priceNote": "Half-Day: 250 AED · Full-Day: 500 AED",
       "availabilityNote": "Confirmed after schedule check with Shahzaman Khokhar",
       "itinerary": [
         "Private morning pickup at your preferred hour",
@@ -416,25 +518,11 @@
         "Optional paid attraction tickets & dining"
       ],
       "bookingOptions": [
-        "Half-Day Private (4 Hours) – 400 AED",
-        "Full-Day Private (8 Hours) – 700 AED"
+        "Half-Day Private (4 Hours) – 250 AED",
+        "Full-Day Private (8 Hours) – 500 AED"
       ],
       "featured": false,
-      "sortOrder": 10,
-      "galleryImages": [
-        "/src/assets/images/burj_al_arab_jumeirah_coast_1795199286770.jpg",
-        "/src/assets/images/dubai_frame_zabeel_panorama_1795199286236.jpg",
-        "/src/assets/images/atlantis_palm_golden_crescent_1795199286173.jpg",
-        "/src/assets/images/desert_safari_sunset_luxury_1795199286659.jpg",
-        "/src/assets/images/desert_camp_starlight_dinner_1795199287008.jpg",
-        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.32_AM_c55829f1.jpeg",
-        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.19_AM_3d5b2311.jpeg",
-        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.24_AM__1__274d09b4.jpeg",
-        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.25_AM_217a33ae.jpeg",
-        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.18_AM_1b47f683.jpeg",
-        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.27_AM_c5af3e19.jpeg",
-        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_8.53.31_AM_7f135b49.jpeg"
-      ]
+      "sortOrder": 12
     },
     {
       "id": "tour-custom-private",
@@ -444,8 +532,8 @@
       "imageUrl": "/src/assets/images/hero_dubai_skyline_1794985266623.jpg",
       "description": "Build your exact Dubai or UAE itinerary from scratch — ideal for transit layovers, multi-day family visits, photography trips, or bespoke milestone celebrations.",
       "duration": "Half-Day (4 Hours) / Full-Day (8 Hours)",
-      "startingPriceAed": 350,
-      "priceNote": "Half-Day: 350 AED · Full-Day: 650 AED",
+      "startingPriceAed": 250,
+      "priceNote": "Half-Day: 250 AED · Full-Day: 500 AED",
       "availabilityNote": "Confirmed after schedule check with Shahzaman Khokhar",
       "itinerary": [
         "Pre-tour WhatsApp or email consultation with Shahzaman Khokhar",
@@ -461,11 +549,11 @@
         "Third-party tickets, dining, or specialty rentals unless quoted"
       ],
       "bookingOptions": [
-        "Half-Day Custom Tour (4 Hours) – 350 AED",
-        "Full-Day Custom Tour (8 Hours) – 650 AED"
+        "Half-Day Custom Tour (4 Hours) – 250 AED",
+        "Full-Day Custom Tour (8 Hours) – 500 AED"
       ],
       "featured": false,
-      "sortOrder": 11
+      "sortOrder": 13
     },
     {
       "id": "transfer-airport-arrival-old-dubai",
@@ -473,6 +561,9 @@
       "title": "Dubai Airport Arrival – Old Dubai (Deira & Bur Dubai)",
       "category": "Airport Transfers",
       "imageUrl": "/src/assets/images/tour_old_dubai_1794985269475.jpg",
+      "galleryImages": [
+        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.08_AM_7effb360.jpeg"
+      ],
       "description": "Private Dubai International Airport (DXB) arrival transfer directly to any hotel or residence in Old Dubai, including Deira Dubai and Bur Dubai.",
       "duration": "Point-to-Point Arrival Transfer",
       "startingPriceAed": 120,
@@ -496,10 +587,7 @@
         "DXB Arrival to Old Dubai (Deira / Bur Dubai) – 120 AED"
       ],
       "featured": false,
-      "sortOrder": 12,
-      "galleryImages": [
-        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.08_AM_7effb360.jpeg"
-      ]
+      "sortOrder": 12
     },
     {
       "id": "transfer-airport-new-dubai",
@@ -507,6 +595,9 @@
       "title": "Dubai Airport Arrival & Departure – New Dubai",
       "category": "Airport Transfers",
       "imageUrl": "/src/assets/images/tour_dubai_marina_1794985268367.jpg",
+      "galleryImages": [
+        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.08_AM_7effb360.jpeg"
+      ],
       "description": "Private Dubai Airport (DXB) arrival or departure transfers serving New Dubai districts including Dubai Marina, Palm Jumeirah, and Downtown Dubai.",
       "duration": "Point-to-Point Airport Transfer",
       "startingPriceAed": 170,
@@ -530,10 +621,7 @@
         "New Dubai to DXB Departure – 170 AED"
       ],
       "featured": false,
-      "sortOrder": 13,
-      "galleryImages": [
-        "/assets/aistudio/WhatsApp_Image_2026-11-20_at_9.33.08_AM_7effb360.jpeg"
-      ]
+      "sortOrder": 13
     },
     {
       "id": "transfer-airport-departure-old-dubai",
@@ -1099,7 +1187,7 @@
         "id": "tours-half-full-day",
         "category": "Tours",
         "question": "Do city and private sightseeing tours offer Half-Day and Full-Day AED rates?",
-        "answer": "Yes. Clear Half-Day (4 Hours) and Full-Day (8 Hours) rates are available in AED — including Dubai City Tour (350 AED Half-Day / 600 AED Full-Day), Old Dubai Heritage Tour (200 AED Half-Day / 420 AED Full-Day), Private Dubai Sightseeing (400 AED Half-Day / 700 AED Full-Day), and Abu Dhabi City Tour (750 AED Full-Day)."
+        "answer": "Yes. Clear Half-Day (4 Hours, up to 250 AED) and Full-Day (8 Hours, up to 500 AED) rates are available in AED — including Half-Day Dubai Tour (250 AED), Full-Day Dubai Tour (500 AED), Dubai City Tour (250 AED Half-Day / 500 AED Full-Day), Old Dubai Heritage Tour (200 AED Half-Day / 420 AED Full-Day), and Abu Dhabi City Tour (500 AED Full-Day)."
       },
       {
         "id": "tours-team-guides",

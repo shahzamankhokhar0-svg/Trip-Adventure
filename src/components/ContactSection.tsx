@@ -48,6 +48,13 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, phone, subject, message }),
       });
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        setSuccess(
+          'Your inquiry details are ready. For immediate response offline or via mobile, please tap "WhatsApp Business" on the left.'
+        );
+        return;
+      }
       const data = await res.json();
       if (!res.ok) {
         setError(data.error || 'Could not send inquiry.');
@@ -60,7 +67,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
         setMessage('');
       }
     } catch {
-      setError('Network error while sending message.');
+      setError('Unable to reach server right now. Please message us directly on WhatsApp.');
     } finally {
       setSubmitting(false);
     }
@@ -85,7 +92,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
 
           <div className="space-y-4 rounded-2xl border border-neutral-200 bg-white p-6">
             <a
-              href={buildWhatsAppUrl(settings.whatsappNumber)}
+              href={buildWhatsAppUrl(settings.whatsappNumber || '+971542218616')}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-start gap-3.5 rounded-xl border border-neutral-100 bg-[#FAF9F6] p-4 transition-colors hover:border-[#C59B38]"
@@ -94,20 +101,22 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
               <div>
                 <p className="text-xs font-semibold text-neutral-500">WhatsApp Business</p>
                 <p className="font-mono-num mt-0.5 text-sm font-semibold text-[#111114]">
-                  {settings.whatsappNumber}
+                  {settings.whatsappNumber || '+971542218616'}
                 </p>
                 <p className="mt-0.5 text-xs text-[#8B6816]">Tap to start a WhatsApp chat</p>
               </div>
             </a>
 
             <a
-              href={`mailto:${settings.email}`}
+              href={`mailto:${settings.email || 'tripadventure63@gmail.com'}`}
               className="flex items-start gap-3.5 rounded-xl border border-neutral-100 bg-[#FAF9F6] p-4 transition-colors hover:border-[#C59B38]"
             >
               <Mail className="mt-0.5 h-5 w-5 shrink-0 text-[#8B6816]" />
               <div>
                 <p className="text-xs font-semibold text-neutral-500">Email Contact</p>
-                <p className="mt-0.5 text-sm font-semibold text-[#111114]">{settings.email}</p>
+                <p className="mt-0.5 text-sm font-semibold text-[#111114]">
+                  {settings.email || 'tripadventure63@gmail.com'}
+                </p>
               </div>
             </a>
 

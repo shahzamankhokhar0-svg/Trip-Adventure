@@ -266,6 +266,19 @@ function broadcastAdminBookingEvent(
 
 async function startServer() {
   const app = express();
+  app.set('trust proxy', true);
+  app.use((req, res, next) => {
+    const forwardedProto = req.headers['x-forwarded-proto'];
+    if (IS_PROD && forwardedProto === 'http' && req.get('host')) {
+      return res.redirect(301, `https://${req.get('host')}${req.originalUrl}`);
+    }
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    if (req.secure || forwardedProto === 'https') {
+      res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    }
+    next();
+  });
   app.use(compression({ threshold: 1024 }));
   app.use(express.json({ limit: '5mb' }));
   app.use(
@@ -299,8 +312,9 @@ async function startServer() {
 
   app.get('/sitemap.xml', (req, res) => {
     const store = loadStore();
+    const proto = req.headers['x-forwarded-proto'] === 'https' || IS_PROD ? 'https' : req.protocol;
     const baseUrl = (
-      process.env.APP_URL || `${req.protocol}://${req.get('host') || 'localhost:3000'}`
+      process.env.APP_URL || `${proto}://${req.get('host') || 'localhost:3000'}`
     ).replace(/\/$/, '');
     const staticPaths = ['', '/about', '/tours', '/attractions', '/gallery', '/reviews', '/contact', '/book'];
     const tourPaths = store.tours.map((t) => `/tours/${t.slug}`);
@@ -406,27 +420,25 @@ async function startServer() {
   app.post('/api/bookings', async (req, res) => {
     const store = loadStore();
     const fullName = sanitizeText(req.body?.fullName, 120);
-    const email = sanitizeText(req.body?.email, 160).toLowerCase();
+    const rawEmail = sanitizeText(req.body?.email, 160).toLowerCase();
+    const email = rawEmail && isValidEmail(rawEmail) ? rawEmail : '';
     const whatsappNumber = sanitizeText(req.body?.whatsappNumber, 40);
-    const nationality = sanitizeText(req.body?.nationality, 80);
+    const nationality = sanitizeText(req.body?.nationality, 80) || 'Not specified';
     const tourId = sanitizeText(req.body?.tourId, 80);
     const travelDate = sanitizeText(req.body?.travelDate, 20);
     const adults = Number(req.body?.adults);
     const children = Number(req.body?.children ?? 0);
-    const pickupLocation = sanitizeText(req.body?.pickupLocation, 220);
+    const pickupLocation = sanitizeText(req.body?.pickupLocation, 220) || 'To be confirmed on WhatsApp';
     const requirements = sanitizeText(req.body?.requirements, 1200);
 
     if (!fullName || fullName.length < 2) {
       return res.status(400).json({ error: 'Please enter your full name.' });
     }
-    if (!email || !isValidEmail(email)) {
+    if (rawEmail && !isValidEmail(rawEmail)) {
       return res.status(400).json({ error: 'Please enter a valid email address.' });
     }
     if (!whatsappNumber || whatsappNumber.length < 6) {
       return res.status(400).json({ error: 'Please enter a valid WhatsApp or phone number.' });
-    }
-    if (!nationality) {
-      return res.status(400).json({ error: 'Please enter your nationality.' });
     }
     if (!travelDate || !/^\d{4}-\d{2}-\d{2}$/.test(travelDate)) {
       return res.status(400).json({ error: 'Please select a valid travel date.' });
@@ -438,20 +450,20 @@ async function startServer() {
     if (blockedReason) {
       return res.status(409).json({ error: blockedReason });
     }
-    if (!Number.isInteger(adults) || adults < 1 || adults > 50) {
-      return res.status(400).json({ error: 'Adults must be between 1 and 50.' });
+    if (!Number.isInteger(adults) || adults < 1 || adults > 20) {
+      return res.status(400).json({ error: 'Adults must be between 1 and 20.' });
     }
-    if (!Number.isInteger(children) || children < 0 || children > 50) {
-      return res.status(400).json({ error: 'Children must be between 0 and 50.' });
-    }
-    if (!pickupLocation || pickupLocation.length < 2) {
-      return res.status(400).json({ error: 'Please enter your hotel or pickup location.' });
+    if (!Number.isInteger(children) || children < 0 || children > 20) {
+      return res.status(400).json({ error: 'Children must be between 0 and 20.' });
     }
 
     const tour = store.tours.find((t) => t.id === tourId || t.slug === tourId);
     if (!tour) {
       return res.status(400).json({ error: 'Please select a valid tour package.' });
     }
+
+    const tourOption = sanitizeText(req.body?.tourOption, 160);
+    const resolvedTourTitle = tourOption ? `${tour.title} — ${tourOption}` : tour.title;
 
     let referenceCode = generateReferenceCode();
     while (store.bookings.some((b) => b.referenceCode === referenceCode)) {
@@ -467,7 +479,7 @@ async function startServer() {
       whatsappNumber,
       nationality,
       tourId: tour.id,
-      tourTitle: tour.title,
+      tourTitle: resolvedTourTitle,
       travelDate,
       adults,
       children,
